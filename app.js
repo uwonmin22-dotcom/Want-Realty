@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const STORAGE_KEY_DRAFT = 'smart_listing_draft_v2';
   const STORAGE_KEY_COUNTERS = 'smart_listing_counters_v2';
   const STORAGE_KEY_LAST_GU = 'smart_listing_last_gu';
+  const STORAGE_KEY_LAST_DONG = 'smart_listing_last_dong';
   const STORAGE_KEY_LAST_MANAGER = 'smart_listing_last_manager_v2';
   const STORAGE_KEY_REMEMBER_COMMON = 'smart_listing_remember_common';
 
@@ -1121,18 +1122,22 @@ function doPost(e) {
     // PIN 보안 잠금 & 인증 이벤트
     if (pinInput) {
       pinInput.addEventListener('input', () => {
-        if (pinInput.value.length === 4) {
+        if (pinInput.value && pinInput.value.length === 4) {
           handlePinUnlock();
         }
       });
-      pinInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+      pinInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter' || (pinInput.value && pinInput.value.length === 4)) {
           handlePinUnlock();
         }
       });
     }
     if (btnUnlockPin) {
       btnUnlockPin.addEventListener('click', handlePinUnlock);
+      btnUnlockPin.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handlePinUnlock();
+      });
     }
     if (btnLockApp) {
       btnLockApp.addEventListener('click', () => {
@@ -1140,7 +1145,7 @@ function doPost(e) {
         if (pinInput) pinInput.value = '';
         if (pinErrorMsg) pinErrorMsg.style.display = 'none';
         if (pinLockScreen) {
-          pinLockScreen.style.display = 'flex';
+          pinLockScreen.style.setProperty('display', 'flex', 'important');
           setTimeout(() => pinInput.focus(), 300);
         }
         showToast('🔒 앱이 안전하게 잠겼습니다.');
@@ -1150,11 +1155,17 @@ function doPost(e) {
 
   // PIN 보안 인증 함수 (PIN: 7823)
   function handlePinUnlock() {
-    const val = pinInput ? pinInput.value.trim() : '';
+    const val = pinInput ? String(pinInput.value).trim() : '';
     if (val === PIN_CODE) {
-      localStorage.setItem(STORAGE_KEY_PIN_UNLOCKED, 'true');
+      try {
+        localStorage.setItem(STORAGE_KEY_PIN_UNLOCKED, 'true');
+      } catch (e) {
+        console.warn('Storage write failed', e);
+      }
       if (pinErrorMsg) pinErrorMsg.style.display = 'none';
-      if (pinLockScreen) pinLockScreen.style.display = 'none';
+      if (pinLockScreen) {
+        pinLockScreen.style.setProperty('display', 'none', 'important');
+      }
       showToast('🔓 원트답사장 인증 성공! 환영합니다.');
     } else {
       if (pinErrorMsg) pinErrorMsg.style.display = 'block';
@@ -1170,13 +1181,16 @@ function doPost(e) {
     }
   }
 
+  // 전역 호출 등록 (인라인 onclick 보장)
+  window.handlePinUnlockGlobal = handlePinUnlock;
+
   function checkPinSecurity() {
     const isUnlocked = localStorage.getItem(STORAGE_KEY_PIN_UNLOCKED) === 'true';
     if (isUnlocked) {
-      if (pinLockScreen) pinLockScreen.style.display = 'none';
+      if (pinLockScreen) pinLockScreen.style.setProperty('display', 'none', 'important');
     } else {
       if (pinLockScreen) {
-        pinLockScreen.style.display = 'flex';
+        pinLockScreen.style.setProperty('display', 'flex', 'important');
         if (pinInput) {
           pinInput.value = '';
           setTimeout(() => pinInput.focus(), 300);
