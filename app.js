@@ -55,9 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const STORAGE_KEY_DRAFT = 'smart_listing_draft_v2';
   const STORAGE_KEY_COUNTERS = 'smart_listing_counters_v2';
   const STORAGE_KEY_LAST_GU = 'smart_listing_last_gu';
-  const STORAGE_KEY_LAST_DONG = 'smart_listing_last_dong';
-  const STORAGE_KEY_LAST_MANAGER = 'smart_listing_last_manager';
-  const STORAGE_KEY_LAST_PHOTOGRAPHER = 'smart_listing_last_photographer';
+  const STORAGE_KEY_LAST_MANAGER = 'smart_listing_last_manager_v2';
   const STORAGE_KEY_REMEMBER_COMMON = 'smart_listing_remember_common';
 
   // State Variables
@@ -65,14 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let sheetJibunMap = loadJibunMap(); // key: "서초구_서초동_1638-2" -> { lastCode: "A100-20", nextCode: "A100-21" }
   let selectedGu = localStorage.getItem(STORAGE_KEY_LAST_GU) || '서초구';
   let selectedDong = localStorage.getItem(STORAGE_KEY_LAST_DONG) || (selectedGu === '서초구' ? '서초동' : '논현동');
-  let selectedPhotographer = localStorage.getItem(STORAGE_KEY_LAST_PHOTOGRAPHER) || '장';
+  let selectedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || '장';
   let currentUploadedPhotos = []; // { id, name, dataUrl }
 
   // 동일지번 매물추가 모드 상태 변수
   let isSameAddressMode = false;
 
-  // DOM Elements - Photographer (장, 웅, 봄, 유)
-  const photographerInputs = document.querySelectorAll('input[name="photographer"]');
+  // DOM Elements - 담당자 (장, 웅, 봄, 유)
+  const managerInputs = document.querySelectorAll('input[name="manager"]');
 
   // DOM Elements - Gu & Dong & Listing Number
   const guSegmentInputs = document.querySelectorAll('input[name="selectedGu"]');
@@ -103,6 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const bubunInput = document.getElementById('bubunInput');
   const addressInput = document.getElementById('addressInput');
   const addressPreviewVal = document.getElementById('addressPreviewVal');
+
+  // Building & Room / Floor Split Elements (호실 / 총층수 -> 302/4)
+  const buildingName = document.getElementById('buildingName');
+  const roomNumberInput = document.getElementById('roomNumberInput');
+  const totalFloorInput = document.getElementById('totalFloorInput');
+  const roomAndFloor = document.getElementById('roomAndFloor');
 
   // Subway Elements
   const subwayChips = document.getElementById('subwayChips');
@@ -190,6 +194,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const gangnamCountersGrid = document.getElementById('gangnamCountersGrid');
   const btnResetDefaultCounters = document.getElementById('btnResetDefaultCounters');
   const prefRememberCommon = document.getElementById('prefRememberCommon');
+
+  // PIN 보안 인증 (원트부동산 팀원 전용 7823)
+  const PIN_CODE = '7823';
+  const STORAGE_KEY_PIN_UNLOCKED = 'want_realty_pin_unlocked_7823';
+  const pinLockScreen = document.getElementById('pinLockScreen');
+  const pinCard = document.getElementById('pinCard');
+  const pinInput = document.getElementById('pinInput');
+  const pinErrorMsg = document.getElementById('pinErrorMsg');
+  const btnUnlockPin = document.getElementById('btnUnlockPin');
+  const btnLockApp = document.getElementById('btnLockApp');
 
   // Reset & Toast
   const btnNewListing = document.getElementById('btnNewListing');
@@ -359,7 +373,7 @@ function doPost(e) {
     var ss = SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
     var payload = JSON.parse(e.postData.contents);
     
-    var SECRET_KEY = "team1234!"; 
+    var SECRET_KEY = "wt9040"; 
     if (SECRET_KEY && payload.apiKey && payload.apiKey !== SECRET_KEY) {
       return ContentService.createTextOutput(JSON.stringify({ 
         "status": "error", 
@@ -375,21 +389,9 @@ function doPost(e) {
       sheet = ss.getActiveSheet();
     }
     
-    // D열(매물번호) 정렬: A, B, C열(광고, 촬영, 상황) 자동 채움
-    var headers = sheet.getRange(2, 1, 1, Math.min(10, sheet.getLastColumn())).getValues()[0];
-    var isColD = false;
-    for (var h = 0; h < headers.length; h++) {
-      if (String(headers[h]).indexOf("매물번호") !== -1 && h === 3) {
-        isColD = true;
-        break;
-      }
-    }
-    
-    var photographer = payload.photographer || '장';
-    var finalRow = rowData;
-    if (isColD) {
-      finalRow = ['', photographer, '-'].concat(rowData);
-    }
+    // 🌟 A열(광고=''), B열(담당자=장/웅/봄/유), C열(상황='-') 무조건 연결하여 D열부터 매물번호 배치!
+    var manager = payload.manager || payload.photographer || '장';
+    var finalRow = ['', manager, '-'].concat(rowData);
     
     // 🌟 [핵심] D열(매물번호)과 E열(지번동)이 모두 비어있는 첫 행(예: 731행) 탐색
     var targetRow = -1;
@@ -426,8 +428,11 @@ function doPost(e) {
     var isEl = (String(finalRow[17]).toUpperCase() === 'TRUE' || finalRow[17] === true || finalRow[17] === '유' || finalRow[17] === '있음');
     finalRow[17] = isEl;
     
-    // 시트에 데이터 삽입
+    // 시트에 전체 행 데이터 삽입
     sheet.getRange(targetRow, 1, 1, finalRow.length).setValues([finalRow]);
+    
+    // 🌟 B열(2번째 열, 담당자: 장/웅/봄/유) 데이터 기록 100% 보장!
+    sheet.getRange(targetRow, 2).setValue(manager);
     
     // 🌟 엘베 열(18번째 열, R열) 네이티브 체크박스 컨트롤 생성 및 체크/해제 반영
     var elCell = sheet.getRange(targetRow, 18);
@@ -463,6 +468,7 @@ function doPost(e) {
   initApp();
 
   async function initApp() {
+    checkPinSecurity();
     loadSettings();
     renderGuAndDongUI();
     restoreDraft();
@@ -944,17 +950,35 @@ function doPost(e) {
     rentInput.addEventListener('input', updateCalculations);
     maintenanceInput.addEventListener('input', updateCalculations);
 
-    // Photographer inputs (장, 웅, 봄, 유 -> 구글시트 B열 매핑)
-    const savedPhotographer = localStorage.getItem(STORAGE_KEY_LAST_PHOTOGRAPHER) || '장';
-    photographerInputs.forEach(input => {
-      if (input.value === savedPhotographer) {
+    // 담당자 inputs (장, 웅, 봄, 유 -> 구글시트 B열 매핑)
+    const savedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || '장';
+    managerInputs.forEach(input => {
+      if (input.value === savedManager) {
         input.checked = true;
       }
       input.addEventListener('change', (e) => {
-        selectedPhotographer = e.target.value;
-        localStorage.setItem(STORAGE_KEY_LAST_PHOTOGRAPHER, selectedPhotographer);
+        selectedManager = e.target.value;
+        localStorage.setItem(STORAGE_KEY_LAST_MANAGER, selectedManager);
       });
     });
+
+    // 호실 / 총층수 분할 입력기 (예: 302와 4 입력 시 302/4 자동 조합)
+    function updateRoomAndFloor() {
+      const room = (roomNumberInput?.value || '').trim();
+      const floor = (totalFloorInput?.value || '').trim();
+      if (room && floor) {
+        roomAndFloor.value = `${room}/${floor}`;
+      } else if (room) {
+        roomAndFloor.value = room;
+      } else if (floor) {
+        roomAndFloor.value = floor;
+      } else {
+        roomAndFloor.value = '';
+      }
+      updateCalculations();
+    }
+    if (roomNumberInput) roomNumberInput.addEventListener('input', updateRoomAndFloor);
+    if (totalFloorInput) totalFloorInput.addEventListener('input', updateRoomAndFloor);
 
     // Parking Fee Type (무료 / 유료 / 직접입력 칩버튼)
     parkingFeeInputs.forEach(input => {
@@ -1093,6 +1117,72 @@ function doPost(e) {
     // Form reset (Header 🔄 & Bottom 초기화)
     btnNewListing.addEventListener('click', resetFormWithConfirm);
     btnResetForm.addEventListener('click', resetFormWithConfirm);
+
+    // PIN 보안 잠금 & 인증 이벤트
+    if (pinInput) {
+      pinInput.addEventListener('input', () => {
+        if (pinInput.value.length === 4) {
+          handlePinUnlock();
+        }
+      });
+      pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          handlePinUnlock();
+        }
+      });
+    }
+    if (btnUnlockPin) {
+      btnUnlockPin.addEventListener('click', handlePinUnlock);
+    }
+    if (btnLockApp) {
+      btnLockApp.addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY_PIN_UNLOCKED);
+        if (pinInput) pinInput.value = '';
+        if (pinErrorMsg) pinErrorMsg.style.display = 'none';
+        if (pinLockScreen) {
+          pinLockScreen.style.display = 'flex';
+          setTimeout(() => pinInput.focus(), 300);
+        }
+        showToast('🔒 앱이 안전하게 잠겼습니다.');
+      });
+    }
+  }
+
+  // PIN 보안 인증 함수 (PIN: 7823)
+  function handlePinUnlock() {
+    const val = pinInput ? pinInput.value.trim() : '';
+    if (val === PIN_CODE) {
+      localStorage.setItem(STORAGE_KEY_PIN_UNLOCKED, 'true');
+      if (pinErrorMsg) pinErrorMsg.style.display = 'none';
+      if (pinLockScreen) pinLockScreen.style.display = 'none';
+      showToast('🔓 원트답사장 인증 성공! 환영합니다.');
+    } else {
+      if (pinErrorMsg) pinErrorMsg.style.display = 'block';
+      if (pinCard) {
+        pinCard.style.animation = 'none';
+        void pinCard.offsetWidth; // reflow to trigger animation
+        pinCard.style.animation = 'shake 0.4s ease-in-out';
+      }
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
+    }
+  }
+
+  function checkPinSecurity() {
+    const isUnlocked = localStorage.getItem(STORAGE_KEY_PIN_UNLOCKED) === 'true';
+    if (isUnlocked) {
+      if (pinLockScreen) pinLockScreen.style.display = 'none';
+    } else {
+      if (pinLockScreen) {
+        pinLockScreen.style.display = 'flex';
+        if (pinInput) {
+          pinInput.value = '';
+          setTimeout(() => pinInput.focus(), 300);
+        }
+      }
+    }
   }
 
   // ==========================================================================
@@ -1314,13 +1404,14 @@ function doPost(e) {
   function getPreparedSheetData() {
     updateCalculations();
 
-    const selectedPhotographer = document.querySelector('input[name="photographer"]:checked')?.value || selectedPhotographer || '장';
+    const currentSelectedManager = document.querySelector('input[name="manager"]:checked')?.value || selectedManager || '장';
     const selectedToilet = document.querySelector('input[name="toilet"]:checked')?.value || '';
     const selectedElevator = document.querySelector('input[name="elevator"]:checked')?.value || '유';
     const selectedParkingType = document.querySelector('input[name="parkingType"]:checked')?.value || '';
 
     const dataObj = {
-      photographer: selectedPhotographer, // 🌟 B열(촬영) 매핑
+      manager: currentSelectedManager,       // 🌟 B열(담당자) 매핑
+      photographer: currentSelectedManager,  // 호환성 유지
       listingNumber: listingNumberInput.value.trim(),
       dong: dongInput.value.trim(),
       address: addressInput.value.trim(),
@@ -1389,13 +1480,13 @@ function doPost(e) {
       previewTableBody.appendChild(tr);
     });
 
-    // Update modal info text to explicitly show target sheet tab, photographer & mode
+    // Update modal info text to explicitly show target sheet tab, manager & mode
     const modalInfoText = document.querySelector('.modal-info-text');
     if (modalInfoText) {
       const modeNotice = isSameAddressMode
         ? `<div style="margin-top:6px; color:#15803d; font-weight:700; background:#dcfce7; padding:4px 8px; border-radius:4px;">🏢 동일지번 연속 모드 적용: 전송 후 주소/건물명/연락처는 유지되고, 다음 호실(-1) 입력으로 이어집니다.</div>`
         : '';
-      modalInfoText.innerHTML = `구글 스프레드시트 <strong>[${selectedGu}]</strong> 탭 (B열 촬영자: <strong>${dataObj.photographer}</strong>)에 아래 데이터가 등록됩니다.${modeNotice}`;
+      modalInfoText.innerHTML = `구글 스프레드시트 <strong>[${selectedGu}]</strong> 탭 (B열 담당자: <strong>${dataObj.manager}</strong>)에 아래 데이터가 등록됩니다.${modeNotice}`;
     }
 
     previewModal.style.display = 'flex';
@@ -1417,19 +1508,20 @@ function doPost(e) {
         await new Promise(res => setTimeout(res, 800));
         alert('🎉 [테스트 모드: 전송 시뮬레이션 성공]\n\n' +
           '• 대상 시트 탭: [' + selectedGu + '] 시트 탭 맨 아래행\n' +
-          '• 촬영자 (B열): ' + dataObj.photographer + '\n' +
+          '• 담당자 (B열): ' + dataObj.manager + '\n' +
           '• 매물번호: ' + dataObj.listingNumber + '\n' +
           '• 지번동/주소: ' + dataObj.dong + ' / ' + dataObj.address + '\n\n' +
           '상단 ⚙️ 설정에서 구글 웹 앱 URL을 넣으시면 실제 구글 스프레드시트의 [' + selectedGu + '] 탭에 실시간 기록됩니다!');
       } else {
         // Real Google Apps Script Webhook POST with target Gu & Secret Key
-        const savedApiKey = localStorage.getItem('smart_listing_gas_api_key') || 'team1234!';
+        const savedApiKey = localStorage.getItem('smart_listing_gas_api_key') || 'wt9040';
         const payload = {
           timestamp: new Date().toISOString(),
           apiKey: savedApiKey, // 비밀 암호키
           gu: selectedGu, // '서초구' 또는 '강남구' 탭으로 자동 분기
           dong: dataObj.dong,
-          photographer: dataObj.photographer, // 🌟 스프레드시트 B열 자동 입력
+          manager: dataObj.manager,             // 🌟 스프레드시트 B열 담당자 입력
+          photographer: dataObj.photographer,   // 호환성 유지
           row: rowArray
         };
 
@@ -1580,7 +1672,7 @@ function doPost(e) {
     const savedUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || '';
     gasScriptUrlInput.value = savedUrl;
     if (gasApiKeyInput) {
-      gasApiKeyInput.value = localStorage.getItem('smart_listing_gas_api_key') || '';
+      gasApiKeyInput.value = localStorage.getItem('smart_listing_gas_api_key') || 'wt9040';
     }
     updateSyncStatus(savedUrl);
   }
@@ -1620,6 +1712,10 @@ function doPost(e) {
     if (bubunInput) bubunInput.value = '';
     updateJibunAddress();
 
+    if (roomNumberInput) roomNumberInput.value = '';
+    if (totalFloorInput) totalFloorInput.value = '';
+    if (roomAndFloor) roomAndFloor.value = '';
+
     // Reset subway chips active state
     document.querySelectorAll('#subwayChips .chip-mini').forEach(c => c.classList.remove('active'));
 
@@ -1634,8 +1730,9 @@ function doPost(e) {
   // 동일지번 추가 등록: 평수 및 금액조건 데이터 외엔 전부 유지!
   function clearFormForSameAddressNextUnit(nextNum, prevListingNumber) {
     // 1. 호실/층수 초기화
-    const roomInput = document.getElementById('roomAndFloor');
-    if (roomInput) roomInput.value = '';
+    if (roomNumberInput) roomNumberInput.value = '';
+    if (totalFloorInput) totalFloorInput.value = '';
+    if (roomAndFloor) roomAndFloor.value = '';
 
     // 2. 평수 초기화 (전용, 계약, 시트반영)
     exclusiveArea.value = '';
@@ -1655,8 +1752,8 @@ function doPost(e) {
     listingNumberHint.textContent = `🏢 동일지번 모드 진행 중: [${nextNum}] (이전: ${prevListingNumber})`;
 
     // 5. 호실 입력창으로 즉시 포커스 이동
-    if (roomInput) {
-      setTimeout(() => roomInput.focus(), 100);
+    if (roomNumberInput) {
+      setTimeout(() => roomNumberInput.focus(), 100);
     }
 
     updateCalculations();

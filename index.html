@@ -22,6 +22,23 @@
 </head>
 
 <body>
+  <!-- 사내 보안 PIN 잠금 화면 (PIN 번호: 7823) -->
+  <div id="pinLockScreen" class="pin-lock-overlay">
+    <div class="pin-card" id="pinCard">
+      <div class="pin-icon-badge">🔒</div>
+      <h2 class="pin-title">원트답사장 보안 인증</h2>
+      <p class="pin-subtitle">원트부동산 팀원 전용 매물장입니다.<br>사내 보안 PIN 번호(4자리)를 입력해주세요.</p>
+      
+      <div class="pin-input-wrapper">
+        <input type="password" id="pinInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="● ● ● ●" autocomplete="off">
+      </div>
+      <div id="pinErrorMsg" class="pin-error-msg" style="display: none;">비밀번호가 일치하지 않습니다. 다시 입력해주세요.</div>
+      
+      <button type="button" id="btnUnlockPin" class="btn-unlock-pin">인증 및 입장하기 🔓</button>
+      <p class="pin-footer-note">※ 한 번 인증하면 해당 기기에서는 자동으로 유지됩니다.</p>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Top Header -->
     <header class="app-header">
@@ -33,6 +50,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="btnLockApp" class="icon-btn" title="앱 잠그기 (보안)">
+          🔒
+        </button>
         <button type="button" id="btnNewListing" class="icon-btn" title="새 매물 작성 (초기화)">
           🔄
         </button>
@@ -60,24 +80,24 @@
         </div>
         <div class="card-body">
 
-          <!-- 촬영자 선택 (장 / 웅 / 봄 / 유) -> 스프레드시트 B열 자동 매핑 -->
+          <!-- 담당자 선택 (장 / 웅 / 봄 / 유) -> 스프레드시트 B열 자동 매핑 -->
           <div class="form-group">
-            <label class="form-label required">촬영자</label>
-            <div class="segmented-control photographer-segment" id="photographerSegment">
+            <label class="form-label required">담당자</label>
+            <div class="segmented-control manager-segment" id="managerSegment">
               <label class="segment-btn">
-                <input type="radio" name="photographer" value="장" checked>
+                <input type="radio" name="manager" value="장" checked>
                 <span>장</span>
               </label>
               <label class="segment-btn">
-                <input type="radio" name="photographer" value="웅">
+                <input type="radio" name="manager" value="웅">
                 <span>웅</span>
               </label>
               <label class="segment-btn">
-                <input type="radio" name="photographer" value="봄">
+                <input type="radio" name="manager" value="봄">
                 <span>봄</span>
               </label>
               <label class="segment-btn">
-                <input type="radio" name="photographer" value="유">
+                <input type="radio" name="manager" value="유">
                 <span>유</span>
               </label>
             </div>
@@ -181,11 +201,17 @@
           <div class="form-row">
             <div class="form-group col-6">
               <label for="buildingName" class="form-label">건물명</label>
-              <input type="text" id="buildingName" name="buildingName" placeholder="예: 대성빌딩">
+              <input type="text" id="buildingName" name="buildingName" placeholder="예) 원트빌딩">
             </div>
             <div class="form-group col-6">
-              <label for="roomAndFloor" class="form-label required">호실/총층수</label>
-              <input type="text" id="roomAndFloor" name="roomAndFloor" placeholder="예: 302호 / 5층" required>
+              <label class="form-label required">호실 / 총층수</label>
+              <div class="room-floor-split-row">
+                <input type="text" id="roomNumberInput" placeholder="302" style="text-align: center; font-weight: 700; flex: 1;">
+                <span class="slash-separator">/</span>
+                <input type="text" id="totalFloorInput" placeholder="5" style="text-align: center; font-weight: 700; flex: 1;">
+              </div>
+              <!-- 시트 전송용 자동 조합된 호실/층수 (예: 302/5) -->
+              <input type="hidden" id="roomAndFloor" name="roomAndFloor" required>
             </div>
           </div>
 
@@ -198,7 +224,7 @@
             <div class="chips-container mini" id="subwayChips">
               <!-- Dynamically populated based on selected Gu -->
             </div>
-            <input type="text" id="subwayStation" name="subwayStation" placeholder="역 선택 후 도보 시간 등을 입력하세요 (예: 양재역 도보 5분)">
+            <input type="text" id="subwayStation" name="subwayStation">
           </div>
 
         </div>
@@ -217,25 +243,21 @@
             <div class="form-group col-6">
               <label for="exclusiveArea" class="form-label required">전용면적 (평)</label>
               <div class="input-unit">
-                <input type="number" step="0.1" id="exclusiveArea" name="exclusiveArea" placeholder="예: 35.5" required>
+                <input type="number" step="0.1" id="exclusiveArea" name="exclusiveArea" required>
                 <span class="unit">평</span>
               </div>
             </div>
             <div class="form-group col-6">
               <label for="contractArea" class="form-label">계약/공급면적 (평)</label>
               <div class="input-unit">
-                <input type="number" step="0.1" id="contractArea" name="contractArea" placeholder="예: 50.2">
+                <input type="number" step="0.1" id="contractArea" name="contractArea">
                 <span class="unit">평</span>
               </div>
             </div>
           </div>
 
-          <!-- 평수 합산/시트 반영용 포맷 -->
-          <div class="form-group">
-            <label for="pyeongText" class="form-label">시트 반영 평수</label>
-            <input type="text" id="pyeongText" name="pyeong" placeholder="전용 35평 (계약 50평)" readonly
-              class="readonly-input">
-          </div>
+          <!-- 시트 반영 평수 (전송용 hidden) -->
+          <input type="hidden" id="pyeongText" name="pyeong">
 
           <!-- 보/월/관 분할 입력기 -->
           <div class="price-input-box">
@@ -246,24 +268,15 @@
             <div class="form-row">
               <div class="form-group col-4">
                 <label for="deposit" class="form-label-sub">보증금</label>
-                <div class="input-unit">
-                  <input type="number" id="deposit" name="deposit" placeholder="3000">
-                  <span class="unit">만</span>
-                </div>
+                <input type="number" id="deposit" name="deposit" class="price-val-input">
               </div>
               <div class="form-group col-4">
                 <label for="rent" class="form-label-sub">월세</label>
-                <div class="input-unit">
-                  <input type="number" id="rent" name="rent" placeholder="250">
-                  <span class="unit">만</span>
-                </div>
+                <input type="number" id="rent" name="rent" class="price-val-input">
               </div>
               <div class="form-group col-4">
                 <label for="maintenance" class="form-label-sub">관리비</label>
-                <div class="input-unit">
-                  <input type="number" id="maintenance" name="maintenance" placeholder="30">
-                  <span class="unit">만</span>
-                </div>
+                <input type="number" id="maintenance" name="maintenance" class="price-val-input">
               </div>
             </div>
 
@@ -493,27 +506,27 @@
 
             <div class="contact-item">
               <span class="contact-tag">임대인</span>
-              <input type="text" id="contactLandlord" placeholder="이름 및 연락처 (예: 홍길동 010-1234-5678)">
+              <input type="text" id="contactLandlord">
             </div>
 
             <div class="contact-item">
               <span class="contact-tag">임차인</span>
-              <input type="text" id="contactTenant" placeholder="이름 및 연락처">
+              <input type="text" id="contactTenant">
             </div>
 
             <div class="contact-item">
               <span class="contact-tag">소장님</span>
-              <input type="text" id="contactDirector" placeholder="부동산 상호 / 소장님 연락처">
+              <input type="text" id="contactDirector">
             </div>
 
             <div class="contact-item">
               <span class="contact-tag">담당자</span>
-              <input type="text" id="contactManager" placeholder="담당 팀원 / 연락처">
+              <input type="text" id="contactManager">
             </div>
 
             <div class="contact-item">
               <span class="contact-tag">등기소유자</span>
-              <input type="text" id="contactOwner" placeholder="등기상 소유자 정보 (비고용)">
+              <input type="text" id="contactOwner">
             </div>
             <!-- 최종 조합 텍스트 (시트 1열에 통합 또는 분리 저장) -->
             <input type="hidden" id="contactsSummary" name="contactsSummary" value="">
@@ -734,9 +747,9 @@
 
         <div class="form-group mt-3">
           <label for="gasApiKey" class="form-label">🔒 보안 인증 암호키 (Secret Key)</label>
-          <input type="text" id="gasApiKey" placeholder="Apps Script에 설정한 비밀키 (예: team2024!)">
+          <input type="text" id="gasApiKey" placeholder="wt9040" value="wt9040">
           <span class="sub-hint" style="margin-top:2px; font-size:0.75rem; color:#64748b;">
-            URL이 유출되더라도 이 암호키가 일치하지 않으면 시트에 등록되지 않고 차단됩니다.
+            사내 전용 보안 암호키: wt9040 (시트와 일치해야 등록됩니다)
           </span>
         </div>
 
