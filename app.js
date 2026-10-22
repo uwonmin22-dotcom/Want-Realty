@@ -50,7 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ]
   };
 
-  // Storage Keys
+  // Storage Keys & Default Configuration
+  const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxDh2Rflaq6hpnOGTTaqBSEAdC--niRjUojSsMp7c29PqTMFs864XojVRUdSmLthddb-w/exec';
   const STORAGE_KEY_GAS_URL = 'smart_listing_gas_url';
   const STORAGE_KEY_DRAFT = 'smart_listing_draft_v2';
   const STORAGE_KEY_COUNTERS = 'smart_listing_counters_v2';
@@ -519,7 +520,7 @@ function doPost(e) {
 
   // Fetch Live Counters from Google Sheets Web App (첫행 최신 번호 실시간 반영)
   async function fetchLiveCountersFromSheet(isUserClick = false) {
-    const gasUrl = localStorage.getItem(STORAGE_KEY_GAS_URL);
+    const gasUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || DEFAULT_GAS_URL;
 
     if (syncSpinIcon) syncSpinIcon.classList.add('spinning');
     if (syncBtnText) syncBtnText.textContent = '동기화중';
@@ -1509,7 +1510,7 @@ function doPost(e) {
   // Submit Form
   async function submitForm() {
     const { dataObj, rowArray } = getPreparedSheetData();
-    const gasUrl = localStorage.getItem(STORAGE_KEY_GAS_URL);
+    const gasUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || DEFAULT_GAS_URL;
 
     const btnSubmit = document.getElementById('btnSubmit');
     const originalText = btnSubmit.innerHTML;
@@ -1683,7 +1684,7 @@ function doPost(e) {
 
   // Load Settings
   function loadSettings() {
-    const savedUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || '';
+    const savedUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || DEFAULT_GAS_URL;
     gasScriptUrlInput.value = savedUrl;
     if (gasApiKeyInput) {
       gasApiKeyInput.value = localStorage.getItem('smart_listing_gas_api_key') || 'wt9040';
