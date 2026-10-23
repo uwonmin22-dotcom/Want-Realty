@@ -448,9 +448,13 @@
                   <input type="checkbox" id="structRoom" value="룸">
                   <span>룸</span>
                 </label>
-                <div class="room-input-box">
+                <div class="room-input-box" id="roomInputBox">
                   <input type="number" id="roomCount" placeholder="개수" min="1" max="20" disabled>
-                  <span>개</span>
+                  <span class="room-unit">개</span>
+                  <div class="room-stepper-btns">
+                    <button type="button" id="btnRoomUp" class="room-step-btn" title="룸 개수 증가" disabled>▲</button>
+                    <button type="button" id="btnRoomDown" class="room-step-btn" title="룸 개수 감소" disabled>▼</button>
+                  </div>
                 </div>
               </div>
               <label class="checkbox-chip">

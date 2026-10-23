@@ -151,10 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const parkingVisitorInput = document.getElementById('parkingVisitorInput');
   const visitorParkingWrapper = document.getElementById('visitorParkingWrapper');
 
-  // Structure (홀, 룸, 테라스, 루프탑, 베란다, 파티션 칩버튼)
+  // Structure (홀, 룸, 테라스, 루프탑, 수도시설, 파티션 칩버튼)
   const structHall = document.getElementById('structHall');
   const structRoom = document.getElementById('structRoom');
+  const roomInputBox = document.getElementById('roomInputBox');
   const roomCount = document.getElementById('roomCount');
+  const btnRoomUp = document.getElementById('btnRoomUp');
+  const btnRoomDown = document.getElementById('btnRoomDown');
   const structTerrace = document.getElementById('structTerrace');
   const structRooftop = document.getElementById('structRooftop');
   const structVeranda = document.getElementById('structVeranda');
@@ -1074,14 +1077,52 @@ function doPost(e) {
     if (paidParkingCost) paidParkingCost.addEventListener('input', updateCalculations);
     if (parkingCustomInput) parkingCustomInput.addEventListener('input', updateCalculations);
 
-    // Structure inputs (홀, 룸, 테라스, 루프탑, 베란다, 파티션)
-    structRoom.addEventListener('change', (e) => {
-      roomCount.disabled = !e.target.checked;
-      if (e.target.checked && !roomCount.value) {
+    // Structure inputs (홀, 룸, 테라스, 루프탑, 수도시설, 파티션)
+    function updateRoomStepperState() {
+      const isRoomActive = structRoom.checked;
+      roomCount.disabled = !isRoomActive;
+      if (btnRoomUp) btnRoomUp.disabled = !isRoomActive;
+      if (btnRoomDown) btnRoomDown.disabled = !isRoomActive;
+      if (roomInputBox) {
+        if (isRoomActive) {
+          roomInputBox.classList.add('active');
+        } else {
+          roomInputBox.classList.remove('active');
+        }
+      }
+      if (isRoomActive && (!roomCount.value || parseInt(roomCount.value, 10) < 1)) {
         roomCount.value = '1';
       }
+    }
+
+    structRoom.addEventListener('change', () => {
+      updateRoomStepperState();
       updateCalculations();
     });
+
+    if (btnRoomUp) {
+      btnRoomUp.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!structRoom.checked) return;
+        let cur = parseInt(roomCount.value, 10) || 1;
+        if (cur < 20) {
+          roomCount.value = String(cur + 1);
+          updateCalculations();
+        }
+      });
+    }
+
+    if (btnRoomDown) {
+      btnRoomDown.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!structRoom.checked) return;
+        let cur = parseInt(roomCount.value, 10) || 1;
+        if (cur > 1) {
+          roomCount.value = String(cur - 1);
+          updateCalculations();
+        }
+      });
+    }
 
     structHall.addEventListener('change', updateCalculations);
     if (structTerrace) structTerrace.addEventListener('change', updateCalculations);
@@ -1848,6 +1889,9 @@ function doPost(e) {
     if (parkingVisitorBox) parkingVisitorBox.style.display = 'none';
     if (parkingCostLabel) parkingCostLabel.textContent = '추가 주차 (대당)';
     if (paidParkingCost) paidParkingCost.placeholder = '';
+    if (roomInputBox) roomInputBox.classList.remove('active');
+    if (btnRoomUp) btnRoomUp.disabled = true;
+    if (btnRoomDown) btnRoomDown.disabled = true;
     updateCalculations();
   }
 

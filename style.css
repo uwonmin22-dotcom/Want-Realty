@@ -918,27 +918,82 @@ select:focus {
   background: #ffffff;
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 0 8px;
+  padding: 0 4px 0 6px;
   height: 44px;
-  width: 90px;
+  width: 104px;
+  gap: 2px;
+}
+
+.room-input-box.active {
+  border-color: #22c55e;
+  background: #f0fdf4;
 }
 
 .room-input-box input {
   border: none;
+  background: transparent;
   padding: 0;
-  width: 100%;
+  width: 32px;
   text-align: center;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--text-main);
+}
+
+.room-input-box input:disabled {
+  opacity: 0.4;
+  color: var(--text-muted);
 }
 
 .room-input-box input:focus {
   box-shadow: none;
 }
 
-.room-input-box span {
-  font-size: 0.85rem;
+.room-input-box .room-unit {
+  font-size: 0.8rem;
   color: var(--text-muted);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.room-stepper-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 36px;
+  justify-content: center;
+}
+
+.room-step-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  font-size: 0.55rem;
+  color: #334155;
+  line-height: 1;
+  padding: 3px 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.room-step-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.room-step-btn:active:not(:disabled) {
+  background: #cbd5e1;
+  transform: scale(0.92);
+}
+
+.room-step-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
 }
 
 /* Move in Options */
