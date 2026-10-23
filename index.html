@@ -498,10 +498,10 @@
             <input type="hidden" id="moveInSummary" name="moveInSummary" value="공실">
           </div>
 
-          <!-- 연락처 (임대인, 임차인, 소장님, 담당자, 등기상소유자) -->
+          <!-- 연락처 (임대인, 임차인, 소장님, 관리자, 등기소유자, 직접입력) -->
           <div class="contacts-wrapper">
             <div class="contacts-title">
-              <span>연락처 정보 (소유주 / 임차인 / 소장님 / 담당자)</span>
+              <span>연락처 정보 (소유주 / 임차인 / 소장님 / 관리자 / 직접입력)</span>
             </div>
 
             <div class="contact-item">
@@ -520,13 +520,18 @@
             </div>
 
             <div class="contact-item">
-              <span class="contact-tag">담당자</span>
+              <span class="contact-tag">관리자</span>
               <input type="text" id="contactManager">
             </div>
 
             <div class="contact-item">
               <span class="contact-tag">등기소유자</span>
               <input type="text" id="contactOwner">
+            </div>
+
+            <div class="contact-item">
+              <span class="contact-tag">직접입력</span>
+              <input type="text" id="contactCustom" placeholder="구분 및 연락처 직접 입력 (예: 경비실 02-xxx, 분양팀 010-xxx)">
             </div>
             <!-- 최종 조합 텍스트 (시트 1열에 통합 또는 분리 저장) -->
             <input type="hidden" id="contactsSummary" name="contactsSummary" value="">

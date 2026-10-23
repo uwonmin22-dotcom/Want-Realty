@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const contactTenant = document.getElementById('contactTenant');
   const contactDirector = document.getElementById('contactDirector');
   const contactManager = document.getElementById('contactManager');
+  const contactCustom = document.getElementById('contactCustom');
   const contactOwner = document.getElementById('contactOwner');
   const contactsSummaryHidden = document.getElementById('contactsSummary');
 
@@ -230,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { index: 14, key: 'parkingSummary', name: '주차/추가여부', isExcluded: false },
     { index: 15, key: 'elevator', name: '엘베', isExcluded: false },
     { index: 16, key: 'parkingType', name: '자주/기계/혼합', isExcluded: false },
-    { index: 17, key: 'contactsSummary', name: '소유주 / 임차인 / 소장님 / 담당자', isExcluded: false },
+    { index: 17, key: 'contactsSummary', name: '소유주 / 임차인 / 소장님 / 관리자', isExcluded: false },
     { index: 18, key: 'moveInSummary', name: '공실/협의/만기', isExcluded: false },
     { index: 19, key: 'memo', name: '비고 (특이사항) 비공개메모', isExcluded: false },
     { index: 20, key: 'structureSummary', name: '내부구조', isExcluded: false },
@@ -268,7 +269,12 @@ function getTargetSheet(ss, guName) {
 // 1. [실시간 매물번호 조회] 구글 시트 1행 최신 번호 및 시트 내 모든 지번의 최근 매물번호를 읽어옵니다.
 function doGet(e) {
   try {
-    var ss = SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    var ss;
+    try {
+      ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    } catch(e) {
+      ss = SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    }
     
     var PREFIX_MAP = {
       "서초구": { "A": "서초동", "B": "반포동", "C": "잠원동", "D": "양재동", "E": "방배동" },
@@ -372,7 +378,12 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.tryLock(20000);
   try {
-    var ss = SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    var ss;
+    try {
+      ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    } catch(e) {
+      ss = SpreadsheetApp.openById("1j9rUMvePjk85SvDeqt9mHjgQZHB3ihFVLXrcwGsBBbE");
+    }
     var payload = JSON.parse(e.postData.contents);
     
     var SECRET_KEY = "wt9040"; 
@@ -462,7 +473,7 @@ function doPost(e) {
     lock.releaseLock();
   }
 }
-}`;
+`;
 
   gasCodeSnippet.textContent = GAS_CODE_SAMPLE;
 
@@ -1077,13 +1088,11 @@ function doPost(e) {
     });
     moveInDetailText.addEventListener('input', updateCalculations);
 
-    // Contacts (Persist Manager if checked)
-    [contactLandlord, contactTenant, contactDirector, contactManager, contactOwner].forEach(el => {
+    // Contacts
+    [contactLandlord, contactTenant, contactDirector, contactManager, contactCustom, contactOwner].forEach(el => {
+      if (!el) return;
       el.addEventListener('input', () => {
         updateCalculations();
-        if (contactManager.value.trim()) {
-          localStorage.setItem(STORAGE_KEY_LAST_MANAGER, contactManager.value.trim());
-        }
       });
     });
 
@@ -1247,7 +1256,7 @@ function doPost(e) {
     if (elParking) elParking.textContent = `${dataObj.parkingSummary || '협의'} (${dataObj.parkingType || '자주식'})`;
     if (elMoveIn) elMoveIn.textContent = dataObj.moveInSummary || '공실 (즉시입주)';
     if (elMemo) elMemo.textContent = dataObj.memo || '특이사항 없음';
-    if (elContacts) elContacts.textContent = dataObj.contactsSummary || '담당자 확인 요망';
+    if (elContacts) elContacts.textContent = dataObj.contactsSummary || '관리자/담당 확인 요망';
 
     const now = new Date();
     if (elDateStamp) {
@@ -1405,13 +1414,17 @@ function doPost(e) {
       moveInSummaryHidden.value = detail ? `${selectedMoveIn} (${detail})` : selectedMoveIn;
     }
 
-    // 6. 연락처 요약
+    // 6. 연락처 요약 (임대인 -> 임차인 -> 소장님 -> 관리자 -> 등기소유 -> 직접입력)
     const cParts = [];
-    if (contactLandlord.value.trim()) cParts.push(`임대인: ${contactLandlord.value.trim()}`);
-    if (contactTenant.value.trim()) cParts.push(`임차인: ${contactTenant.value.trim()}`);
-    if (contactDirector.value.trim()) cParts.push(`소장님: ${contactDirector.value.trim()}`);
-    if (contactManager.value.trim()) cParts.push(`담당자: ${contactManager.value.trim()}`);
-    if (contactOwner.value.trim()) cParts.push(`등기소유: ${contactOwner.value.trim()}`);
+    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`임대인: ${contactLandlord.value.trim()}`);
+    if (contactTenant && contactTenant.value.trim()) cParts.push(`임차인: ${contactTenant.value.trim()}`);
+    if (contactDirector && contactDirector.value.trim()) cParts.push(`소장님: ${contactDirector.value.trim()}`);
+    if (contactManager && contactManager.value.trim()) cParts.push(`관리자: ${contactManager.value.trim()}`);
+    if (contactOwner && contactOwner.value.trim()) cParts.push(`등기소유: ${contactOwner.value.trim()}`);
+    if (contactCustom && contactCustom.value.trim()) {
+      const customVal = contactCustom.value.trim();
+      cParts.push(customVal.includes(':') ? customVal : `직접: ${customVal}`);
+    }
     contactsSummaryHidden.value = cParts.join(' | ');
   }
 
@@ -1720,8 +1733,17 @@ function doPost(e) {
   function clearFormCleanState() {
     localStorage.removeItem(STORAGE_KEY_DRAFT);
 
+    // 🌟 마지막 선택된 담당자(장/웅/봄/유) 보존
+    const preservedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || selectedManager || '장';
+
     // Reset all form inputs completely (연락처, 금액, 주소, 비고 등 전액 초기화)
     listingForm.reset();
+
+    // 🌟 폼 리셋 후 담당자 라디오 버튼을 선택 상태로 복원
+    selectedManager = preservedManager;
+    managerInputs.forEach(input => {
+      input.checked = (input.value === preservedManager);
+    });
 
     if (bonbunInput) bonbunInput.value = '';
     if (bubunInput) bubunInput.value = '';
@@ -1800,6 +1822,7 @@ function doPost(e) {
       contactTenant: contactTenant.value,
       contactDirector: contactDirector.value,
       contactManager: contactManager.value,
+      contactCustom: contactCustom ? contactCustom.value : '',
       contactOwner: contactOwner.value
     };
   }
