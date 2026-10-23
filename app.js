@@ -1135,6 +1135,27 @@ function doPost(e) {
 
     btnSettings.addEventListener('click', openAdminAuthModal);
     btnOpenSettingsFromBanner.addEventListener('click', openAdminAuthModal);
+
+    // 🏢 히든 터치: 좌측 상단 로고(🏢)를 1.5초 내에 3번 연속 터치 시 관리자 인증 모달 실행
+    let logoTouchCount = 0;
+    let logoTouchTimer = null;
+    const logoIcon = document.querySelector('.logo-icon');
+    if (logoIcon) {
+      logoIcon.style.cursor = 'pointer';
+      logoIcon.addEventListener('click', () => {
+        logoTouchCount++;
+        clearTimeout(logoTouchTimer);
+        logoTouchTimer = setTimeout(() => {
+          logoTouchCount = 0;
+        }, 1500);
+
+        if (logoTouchCount >= 3) {
+          logoTouchCount = 0;
+          openAdminAuthModal();
+        }
+      });
+    }
+
     if (btnCancelAdminAuth) btnCancelAdminAuth.addEventListener('click', () => adminAuthModal.style.display = 'none');
     if (btnConfirmAdminAuth) btnConfirmAdminAuth.addEventListener('click', handleAdminAuth);
     if (adminPinInput) {
