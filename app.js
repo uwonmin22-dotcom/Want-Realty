@@ -209,6 +209,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnUnlockPin = document.getElementById('btnUnlockPin');
   const btnLockApp = document.getElementById('btnLockApp');
 
+  // 관리자 전용 보안 인증 (PIN 6자리: 000001)
+  const ADMIN_PIN = '000001';
+  const adminAuthModal = document.getElementById('adminAuthModal');
+  const adminPinInput = document.getElementById('adminPinInput');
+  const adminPinErrorMsg = document.getElementById('adminPinErrorMsg');
+  const btnCancelAdminAuth = document.getElementById('btnCancelAdminAuth');
+  const btnConfirmAdminAuth = document.getElementById('btnConfirmAdminAuth');
+
   // Reset & Toast
   const btnNewListing = document.getElementById('btnNewListing');
   const btnResetForm = document.getElementById('btnResetForm');
@@ -1097,15 +1105,44 @@ function doPost(e) {
       });
     });
 
-    // Settings Modal
-    btnSettings.addEventListener('click', () => {
-      renderCounterSettingsUI();
-      settingsModal.style.display = 'flex';
-    });
-    btnOpenSettingsFromBanner.addEventListener('click', () => {
-      renderCounterSettingsUI();
-      settingsModal.style.display = 'flex';
-    });
+    // Settings Modal (관리자 인증 000001 후 진입)
+    function openAdminAuthModal() {
+      if (!adminAuthModal) {
+        renderCounterSettingsUI();
+        settingsModal.style.display = 'flex';
+        return;
+      }
+      adminPinInput.value = '';
+      adminPinErrorMsg.style.display = 'none';
+      adminAuthModal.style.display = 'flex';
+      setTimeout(() => adminPinInput.focus(), 150);
+    }
+
+    function handleAdminAuth() {
+      const inputCode = (adminPinInput.value || '').trim();
+      if (inputCode === ADMIN_PIN) {
+        adminAuthModal.style.display = 'none';
+        adminPinErrorMsg.style.display = 'none';
+        renderCounterSettingsUI();
+        settingsModal.style.display = 'flex';
+        showToast('관리자 인증 성공 🔓');
+      } else {
+        adminPinErrorMsg.style.display = 'block';
+        adminPinInput.value = '';
+        adminPinInput.focus();
+      }
+    }
+
+    btnSettings.addEventListener('click', openAdminAuthModal);
+    btnOpenSettingsFromBanner.addEventListener('click', openAdminAuthModal);
+    if (btnCancelAdminAuth) btnCancelAdminAuth.addEventListener('click', () => adminAuthModal.style.display = 'none');
+    if (btnConfirmAdminAuth) btnConfirmAdminAuth.addEventListener('click', handleAdminAuth);
+    if (adminPinInput) {
+      adminPinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleAdminAuth();
+      });
+    }
+
     btnCloseSettings.addEventListener('click', () => settingsModal.style.display = 'none');
     btnSaveSettings.addEventListener('click', saveSettingsModal);
     btnCopyGasCode.addEventListener('click', copyGasCode);

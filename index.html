@@ -697,6 +697,28 @@
     </div>
   </div>
 
+  <!-- Modal: 관리자 보안 인증 (PIN 6자리: 000001) -->
+  <div id="adminAuthModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-sheet" style="max-width: 360px; margin: auto; text-align: center; padding: 24px 20px;">
+      <div style="font-size: 2.5rem; margin-bottom: 8px;">🔐</div>
+      <h3 style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin-bottom: 6px;">관리자 인증</h3>
+      <p style="font-size: 0.825rem; color: #64748b; margin-bottom: 16px;">
+        연동 설정 및 보안키 관리는 관리자 전용입니다.<br>관리자 비밀번호(6자리)를 입력해주세요.
+      </p>
+      <div style="margin-bottom: 12px;">
+        <input type="password" id="adminPinInput" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="● ● ● ● ● ●" 
+               style="text-align: center; font-size: 1.3rem; letter-spacing: 6px; font-weight: 700; width: 100%; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+      </div>
+      <div id="adminPinErrorMsg" style="display: none; color: #e11d48; font-size: 0.775rem; font-weight: 600; margin-bottom: 12px;">
+        비밀번호가 일치하지 않습니다.
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" id="btnCancelAdminAuth" class="btn-modal-sub" style="flex: 1;">취소</button>
+        <button type="button" id="btnConfirmAdminAuth" class="btn-modal-action" style="flex: 1; background: #2563eb;">인증하기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: 구글 스프레드시트 연동 설정 안내 -->
   <div id="settingsModal" class="modal-backdrop" style="display:none;">
     <div class="modal-sheet modal-settings">
@@ -757,9 +779,9 @@
 
         <div class="form-group mt-3">
           <label for="gasApiKey" class="form-label">🔒 보안 인증 암호키 (Secret Key)</label>
-          <input type="text" id="gasApiKey" placeholder="wt9040" value="wt9040">
+          <input type="password" id="gasApiKey" placeholder="보안 암호키 입력" value="wt9040">
           <span class="sub-hint" style="margin-top:2px; font-size:0.75rem; color:#64748b;">
-            사내 전용 보안 암호키: wt9040 (시트와 일치해야 등록됩니다)
+            사내 전용 보안 암호키 (시트 Apps Script 코드와 일치해야 등록됩니다)
           </span>
         </div>
 
