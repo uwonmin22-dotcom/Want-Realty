@@ -1473,9 +1473,9 @@ function doPost(e) {
       moveInSummaryHidden.value = detail ? `${selectedMoveIn} (${detail})` : selectedMoveIn;
     }
 
-    // 6. 연락처 요약 (임대인 -> 임차인 -> 소장님 -> 관리자 -> 부동산 -> 등기소유자 -> 직접입력)
+    // 6. 연락처 요약 (소유주 -> 임차인 -> 소장님 -> 관리자 -> 부동산 -> 등기소유자 -> 직접입력)
     const cParts = [];
-    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`임대인 ${contactLandlord.value.trim()}`);
+    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`소유주 ${contactLandlord.value.trim()}`);
     if (contactTenant && contactTenant.value.trim()) cParts.push(`임차인 ${contactTenant.value.trim()}`);
     if (contactDirector && contactDirector.value.trim()) cParts.push(`소장님 ${contactDirector.value.trim()}`);
     if (contactManager && contactManager.value.trim()) cParts.push(`관리자 ${contactManager.value.trim()}`);
