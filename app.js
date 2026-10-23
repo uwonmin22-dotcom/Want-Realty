@@ -168,8 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const contactTenant = document.getElementById('contactTenant');
   const contactDirector = document.getElementById('contactDirector');
   const contactManager = document.getElementById('contactManager');
-  const contactCustom = document.getElementById('contactCustom');
+  const contactRealtor = document.getElementById('contactRealtor');
   const contactOwner = document.getElementById('contactOwner');
+  const contactCustom = document.getElementById('contactCustom');
   const contactsSummaryHidden = document.getElementById('contactsSummary');
 
   // Preview & Modals
@@ -1089,7 +1090,7 @@ function doPost(e) {
     moveInDetailText.addEventListener('input', updateCalculations);
 
     // Contacts
-    [contactLandlord, contactTenant, contactDirector, contactManager, contactCustom, contactOwner].forEach(el => {
+    [contactLandlord, contactTenant, contactDirector, contactManager, contactRealtor, contactOwner, contactCustom].forEach(el => {
       if (!el) return;
       el.addEventListener('input', () => {
         updateCalculations();
@@ -1414,16 +1415,17 @@ function doPost(e) {
       moveInSummaryHidden.value = detail ? `${selectedMoveIn} (${detail})` : selectedMoveIn;
     }
 
-    // 6. 연락처 요약 (임대인 -> 임차인 -> 소장님 -> 관리자 -> 등기소유 -> 직접입력)
+    // 6. 연락처 요약 (임대인 -> 임차인 -> 소장님 -> 관리자 -> 부동산 -> 등기소유자 -> 직접입력)
     const cParts = [];
-    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`임대인: ${contactLandlord.value.trim()}`);
-    if (contactTenant && contactTenant.value.trim()) cParts.push(`임차인: ${contactTenant.value.trim()}`);
-    if (contactDirector && contactDirector.value.trim()) cParts.push(`소장님: ${contactDirector.value.trim()}`);
-    if (contactManager && contactManager.value.trim()) cParts.push(`관리자: ${contactManager.value.trim()}`);
-    if (contactOwner && contactOwner.value.trim()) cParts.push(`등기소유: ${contactOwner.value.trim()}`);
+    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`임대인 ${contactLandlord.value.trim()}`);
+    if (contactTenant && contactTenant.value.trim()) cParts.push(`임차인 ${contactTenant.value.trim()}`);
+    if (contactDirector && contactDirector.value.trim()) cParts.push(`소장님 ${contactDirector.value.trim()}`);
+    if (contactManager && contactManager.value.trim()) cParts.push(`관리자 ${contactManager.value.trim()}`);
+    if (contactRealtor && contactRealtor.value.trim()) cParts.push(`부동산 ${contactRealtor.value.trim()}`);
+    if (contactOwner && contactOwner.value.trim()) cParts.push(`등기소유자 ${contactOwner.value.trim()}`);
     if (contactCustom && contactCustom.value.trim()) {
-      const customVal = contactCustom.value.trim();
-      cParts.push(customVal.includes(':') ? customVal : `직접: ${customVal}`);
+      // 직접입력란은 입력한 데이터 그대로 출력 (예: 유원민 010-8888-8888)
+      cParts.push(contactCustom.value.trim());
     }
     contactsSummaryHidden.value = cParts.join(' | ');
   }
@@ -1822,8 +1824,9 @@ function doPost(e) {
       contactTenant: contactTenant.value,
       contactDirector: contactDirector.value,
       contactManager: contactManager.value,
-      contactCustom: contactCustom ? contactCustom.value : '',
-      contactOwner: contactOwner.value
+      contactRealtor: contactRealtor ? contactRealtor.value : '',
+      contactOwner: contactOwner.value,
+      contactCustom: contactCustom ? contactCustom.value : ''
     };
   }
 
