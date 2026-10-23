@@ -1473,7 +1473,7 @@ function doPost(e) {
       parkingSummaryHidden.value = mainSummary;
     }
 
-    // 4. 구조 요약 (홀, 룸, 테라스, 루프탑, 베란다, 파티션)
+    // 4. 구조 요약 (홀, 룸, 테라스, 루프탑, 수도시설, 파티션)
     const structParts = [];
     if (structHall.checked) structParts.push('홀');
     if (structRoom.checked) {
@@ -1482,7 +1482,7 @@ function doPost(e) {
     }
     if (structTerrace && structTerrace.checked) structParts.push('테라스');
     if (structRooftop && structRooftop.checked) structParts.push('루프탑');
-    if (structVeranda && structVeranda.checked) structParts.push('베란다');
+    if (structVeranda && structVeranda.checked) structParts.push('수도시설');
     if (structPartition && structPartition.checked) structParts.push('파티션');
     const customSt = structureCustom.value.trim();
     if (customSt) structParts.push(customSt);
