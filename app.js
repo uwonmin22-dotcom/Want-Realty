@@ -142,9 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const parkingCustomBox = document.getElementById('parkingCustomBox');
   const parkingCustomInput = document.getElementById('parkingCustomInput');
   const parkingCarsLabel = document.getElementById('parkingCarsLabel');
+  const parkingCostLabel = document.getElementById('parkingCostLabel');
   const parkingCarsCount = document.getElementById('parkingCarsCount');
   const paidParkingCost = document.getElementById('paidParkingCost');
   const parkingSummaryHidden = document.getElementById('parkingSummary');
+  const parkingVisitorCheck = document.getElementById('parkingVisitorCheck');
+  const parkingVisitorBox = document.getElementById('parkingVisitorBox');
+  const parkingVisitorInput = document.getElementById('parkingVisitorInput');
+  const visitorParkingWrapper = document.getElementById('visitorParkingWrapper');
 
   // Structure (홀, 룸, 테라스, 루프탑, 베란다, 파티션 칩버튼)
   const structHall = document.getElementById('structHall');
@@ -1016,46 +1021,52 @@ function doPost(e) {
           if (parkingCustomBox) parkingCustomBox.style.display = 'none';
           if (parkingDetailsBox) parkingDetailsBox.style.display = 'block';
           if (parkingCarsLabel) parkingCarsLabel.textContent = '유료 주차 대수';
+          if (parkingCostLabel) parkingCostLabel.textContent = '월 주차비 (대당 만원)';
           if (paidParkingCost) {
             paidParkingCost.disabled = false;
             paidParkingCost.placeholder = '예: 15';
             paidParkingCost.focus();
           }
         } else {
+          // 무료 선택 시: 월 주차비 -> 추가 주차 (대당), placeholder '무료' 삭제
           if (parkingCustomBox) parkingCustomBox.style.display = 'none';
           if (parkingDetailsBox) parkingDetailsBox.style.display = 'block';
           if (parkingCarsLabel) parkingCarsLabel.textContent = '무료 주차 대수';
+          if (parkingCostLabel) parkingCostLabel.textContent = '추가 주차 (대당)';
           if (paidParkingCost) {
-            paidParkingCost.disabled = true;
-            paidParkingCost.placeholder = '무료';
-            paidParkingCost.value = '';
+            paidParkingCost.disabled = false;
+            paidParkingCost.placeholder = '';
           }
         }
         updateCalculations();
       });
     });
 
+    // 방문 주차 칩버튼 (무료/유료와 중복 선택, 클릭 시 텍스트박스 활성화)
+    if (parkingVisitorCheck) {
+      parkingVisitorCheck.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          if (parkingVisitorBox) parkingVisitorBox.style.display = 'block';
+          if (parkingVisitorInput) parkingVisitorInput.focus();
+        } else {
+          if (parkingVisitorBox) parkingVisitorBox.style.display = 'none';
+        }
+        updateCalculations();
+      });
+    }
+    if (parkingVisitorInput) {
+      parkingVisitorInput.addEventListener('input', updateCalculations);
+    }
+
     // Parking Not Allowed toggle
     parkingNotAllowed.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        if (parkingDetailsBox) {
-          parkingDetailsBox.style.opacity = '0.4';
-          parkingDetailsBox.style.pointerEvents = 'none';
+      const isLocked = e.target.checked;
+      [parkingDetailsBox, parkingCustomBox, visitorParkingWrapper].forEach(box => {
+        if (box) {
+          box.style.opacity = isLocked ? '0.4' : '1';
+          box.style.pointerEvents = isLocked ? 'none' : 'auto';
         }
-        if (parkingCustomBox) {
-          parkingCustomBox.style.opacity = '0.4';
-          parkingCustomBox.style.pointerEvents = 'none';
-        }
-      } else {
-        if (parkingDetailsBox) {
-          parkingDetailsBox.style.opacity = '1';
-          parkingDetailsBox.style.pointerEvents = 'auto';
-        }
-        if (parkingCustomBox) {
-          parkingCustomBox.style.opacity = '1';
-          parkingCustomBox.style.pointerEvents = 'auto';
-        }
-      }
+      });
       updateCalculations();
     });
 
@@ -1425,28 +1436,41 @@ function doPost(e) {
     const sum = rnt + mnt;
     totalMonthlyRent.textContent = `${sum.toLocaleString()} 만원`;
 
-    // 3. 주차 요약 (무료 / 유료 / 직접입력 / 불가)
+    // 3. 주차 요약 (무료 / 유료 / 직접입력 / 불가 + 방문 중복)
     if (parkingNotAllowed && parkingNotAllowed.checked) {
       parkingSummaryHidden.value = '불가';
     } else {
+      let mainSummary = '';
       const feeType = document.querySelector('input[name="parkingFeeType"]:checked')?.value || '무료';
       if (feeType === '직접입력') {
-        parkingSummaryHidden.value = parkingCustomInput?.value?.trim() || '협의';
+        mainSummary = parkingCustomInput?.value?.trim() || '협의';
       } else if (feeType === '유료') {
         const count = parseInt(parkingCarsCount?.value) || 1;
         const cost = paidParkingCost?.value?.trim();
-
-        if (feeType === '유료') {
-          if (cost) {
-            parkingSummaryHidden.value = `유료 ${count}대 (월 ${cost}만)`;
-          } else {
-            parkingSummaryHidden.value = `유료 ${count}대`;
-          }
+        if (cost) {
+          mainSummary = `유료 ${count}대 (월 ${cost}만)`;
+        } else {
+          mainSummary = `유료 ${count}대`;
         }
       } else {
+        // 무료
         const count = parseInt(parkingCarsCount?.value) || 1;
-        parkingSummaryHidden.value = count > 0 ? `무료 ${count}대` : '무료 협의';
+        const addCost = paidParkingCost?.value?.trim();
+        if (addCost) {
+          mainSummary = `무료 ${count}대 (추가 대당 ${addCost}만)`;
+        } else {
+          mainSummary = count > 0 ? `무료 ${count}대` : '무료 협의';
+        }
       }
+
+      // 방문 주차 중복 조합
+      if (parkingVisitorCheck && parkingVisitorCheck.checked) {
+        const vText = parkingVisitorInput?.value?.trim();
+        const visitorStr = vText ? `방문 ${vText}` : '방문가능';
+        mainSummary = mainSummary ? `${mainSummary} / ${visitorStr}` : visitorStr;
+      }
+
+      parkingSummaryHidden.value = mainSummary;
     }
 
     // 4. 구조 요약 (홀, 룸, 테라스, 루프탑, 베란다, 파티션)
@@ -1821,6 +1845,9 @@ function doPost(e) {
 
     // Render fresh Gu and Dong with the next auto listing number
     renderGuAndDongUI();
+    if (parkingVisitorBox) parkingVisitorBox.style.display = 'none';
+    if (parkingCostLabel) parkingCostLabel.textContent = '추가 주차 (대당)';
+    if (paidParkingCost) paidParkingCost.placeholder = '';
     updateCalculations();
   }
 

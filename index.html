@@ -411,12 +411,23 @@
                     </div>
                   </div>
                   <div class="form-group col-6">
-                    <label class="form-label-sub" id="parkingCostLabel">월 주차비 (대당 만원)</label>
+                    <label class="form-label-sub" id="parkingCostLabel">추가 주차 (대당)</label>
                     <div class="input-unit">
-                      <input type="number" id="paidParkingCost" placeholder="무료" disabled>
+                      <input type="number" id="paidParkingCost" placeholder="" min="0">
                       <span class="unit">만원</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- 방문 칩버튼 및 텍스트박스 (무료/유료와 중복 선택 가능) -->
+              <div class="visitor-parking-wrapper" id="visitorParkingWrapper" style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+                <label class="checkbox-chip" style="min-width: 75px; flex-shrink: 0; margin-bottom: 0;">
+                  <input type="checkbox" id="parkingVisitorCheck">
+                  <span>방문</span>
+                </label>
+                <div id="parkingVisitorBox" style="display: none; flex: 1;">
+                  <input type="text" id="parkingVisitorInput" placeholder="방문 주차 조건 (예: 1시간 무료, 손님 주차 가능)">
                 </div>
               </div>
             </div>
@@ -526,7 +537,7 @@
 
             <div class="contact-item">
               <span class="contact-tag">부동산</span>
-              <input type="text" id="contactRealtor">
+              <input type="text" id="contactRealtor" placeholder="상호 및 연락처">
             </div>
 
             <div class="contact-item">
