@@ -1298,10 +1298,16 @@ function doPost(e) {
       });
     }
 
-    // Contacts 바인딩
-    [contactLandlord, contactTenant, contactDirector, contactManager, contactRealtor, contactOwner, contactCustom].forEach(el => {
+    // Contacts 바인딩 (소유주, 임차인, 소장님, 관리자, 부동산, 등기소유자)
+    [contactLandlord, contactTenant, contactDirector, contactManager, contactRealtor, contactOwner].forEach(el => {
       attachPhoneNumberAutoHyphen(el);
     });
+
+    // 직접입력란은 하이픈 자동 변환 없이 입력값 그대로 유지 (요약 계산 업데이트만 연결)
+    if (contactCustom) {
+      contactCustom.addEventListener('input', updateCalculations);
+      contactCustom.addEventListener('change', updateCalculations);
+    }
 
     // Settings Modal (관리자 인증 000001 후 진입)
     function openAdminAuthModal() {
@@ -1706,8 +1712,8 @@ function doPost(e) {
       cParts.push(`등기소유자 ${formatPhoneInText(contactOwner.value.trim())}`);
     }
     if (contactCustom && contactCustom.value.trim()) {
-      // 직접입력란도 전화번호가 포함되어 있다면 하이픈 자동 적용 (예: 유원민 010-8888-8888)
-      cParts.push(formatPhoneInText(contactCustom.value.trim()));
+      // 직접입력란은 하이픈 자동 포맷팅 없이 사용자가 입력한 내용 그대로 반영
+      cParts.push(contactCustom.value.trim());
     }
     contactsSummaryHidden.value = cParts.join(' | ');
   }
