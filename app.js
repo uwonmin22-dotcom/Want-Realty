@@ -1225,62 +1225,76 @@ function doPost(e) {
     function attachPhoneNumberAutoHyphen(inputEl) {
       if (!inputEl) return;
 
-      // Backspace로 하이픈 앞 숫자를 자연스럽게 지우도록 보정
-      inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace') {
-          const selStart = inputEl.selectionStart;
-          const selEnd = inputEl.selectionEnd;
-          if (selStart === selEnd && selStart > 0) {
-            if (inputEl.value[selStart - 1] === '-') {
-              e.preventDefault();
-              const oldVal = inputEl.value;
-              const newVal = oldVal.slice(0, selStart - 2) + oldVal.slice(selStart);
-              inputEl.value = formatPhoneNumber(newVal);
-              const newPos = Math.max(0, selStart - 2);
-              inputEl.setSelectionRange(newPos, newPos);
-              updateCalculations();
-            }
-          }
-        }
-      });
-
-      // 입력 시 실시간 하이픈 포맷팅
-      inputEl.addEventListener('input', () => {
+      function applyFormat() {
         const rawVal = inputEl.value;
+        if (!rawVal) return;
+
+        // 숫자, 하이픈, 공백만으로 구성된 경우 (전화번호 단독 입력)
         if (/^[\d\s\-]+$/.test(rawVal)) {
-          const prevCursor = inputEl.selectionStart;
+          let prevCursor = null;
+          try {
+            prevCursor = inputEl.selectionStart;
+          } catch (e) {}
+
           const prevLen = rawVal.length;
           const formatted = formatPhoneNumber(rawVal);
-          inputEl.value = formatted;
-          if (prevCursor === prevLen) {
-            inputEl.setSelectionRange(formatted.length, formatted.length);
-          } else {
-            const diff = formatted.length - prevLen;
-            const newPos = Math.max(0, Math.min(formatted.length, prevCursor + diff));
-            inputEl.setSelectionRange(newPos, newPos);
+          if (formatted !== rawVal) {
+            inputEl.value = formatted;
+            try {
+              if (prevCursor !== null) {
+                if (prevCursor === prevLen) {
+                  inputEl.setSelectionRange(formatted.length, formatted.length);
+                } else {
+                  const diff = formatted.length - prevLen;
+                  const newPos = Math.max(0, Math.min(formatted.length, prevCursor + diff));
+                  inputEl.setSelectionRange(newPos, newPos);
+                }
+              }
+            } catch (e) {}
           }
         } else {
-          // 이름/상호가 섞여 있는 경우
+          // 이름이나 상호가 섞여 있는 경우
           const formatted = formatPhoneInText(rawVal);
           if (formatted !== rawVal) {
             inputEl.value = formatted;
           }
         }
         updateCalculations();
+      }
+
+      // Backspace로 하이픈 앞 숫자를 자연스럽게 지우도록 보정
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          try {
+            const selStart = inputEl.selectionStart;
+            const selEnd = inputEl.selectionEnd;
+            if (selStart === selEnd && selStart > 0) {
+              if (inputEl.value[selStart - 1] === '-') {
+                e.preventDefault();
+                const oldVal = inputEl.value;
+                const newVal = oldVal.slice(0, selStart - 2) + oldVal.slice(selStart);
+                inputEl.value = formatPhoneNumber(newVal);
+                const newPos = Math.max(0, selStart - 2);
+                inputEl.setSelectionRange(newPos, newPos);
+                updateCalculations();
+              }
+            }
+          } catch (err) {}
+        }
       });
 
-      // 포커스 벗어날 때 정밀 포맷팅
-      inputEl.addEventListener('blur', () => {
-        inputEl.value = formatPhoneInText(inputEl.value);
-        updateCalculations();
+      // 입력 이벤트 (input, keyup, change, blur, compositionend, paste)
+      inputEl.addEventListener('input', applyFormat);
+      inputEl.addEventListener('keyup', (e) => {
+        if ((e.key >= '0' && e.key <= '9') || e.key === 'Backspace') {
+          applyFormat();
+        }
       });
-
-      // 붙여넣기(Paste) 시 즉각 포맷팅
+      inputEl.addEventListener('change', applyFormat);
+      inputEl.addEventListener('blur', applyFormat);
+      inputEl.addEventListener('compositionend', applyFormat);
       inputEl.addEventListener('paste', () => {
-        setTimeout(() => {
-          inputEl.value = formatPhoneInText(inputEl.value);
-          updateCalculations();
-        }, 10);
+        setTimeout(applyFormat, 10);
       });
     }
 
