@@ -1149,12 +1149,144 @@ function doPost(e) {
     });
     moveInDetailText.addEventListener('input', updateCalculations);
 
-    // Contacts
-    [contactLandlord, contactTenant, contactDirector, contactManager, contactRealtor, contactOwner, contactCustom].forEach(el => {
-      if (!el) return;
-      el.addEventListener('input', () => {
+    // ==========================================
+    // 연락처 전화번호 자동 하이픈 포맷팅 로직
+    // (010, 070, 0507, 02, 전국 지역번호, 1588 등 지원)
+    // ==========================================
+    function formatPhoneNumber(val) {
+      if (!val) return '';
+      const num = String(val).replace(/[^0-9]/g, '');
+      if (!num) return '';
+
+      // 1. 서울 유선전화 (02) - 9자리(02-XXX-XXXX) 또는 10자리(02-XXXX-XXXX)
+      if (num.startsWith('02')) {
+        if (num.length <= 2) return num;
+        if (num.length <= 5) return `${num.slice(0, 2)}-${num.slice(2)}`;
+        if (num.length <= 8) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5)}`;
+        if (num.length === 9) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5, 9)}`;
+        return `${num.slice(0, 2)}-${num.slice(2, 6)}-${num.slice(6, 10)}`;
+      }
+
+      // 2. 안심번호/가상번호 (0502, 0504, 0505, 0507 등 050으로 시작)
+      // 예: 0507-****-**** (12자리) 또는 050X-***-**** (11자리)
+      if (num.startsWith('050')) {
+        if (num.length <= 4) return num;
+        if (num.length <= 8) return `${num.slice(0, 4)}-${num.slice(4)}`;
+        return `${num.slice(0, 4)}-${num.slice(4, 8)}-${num.slice(8, 12)}`;
+      }
+
+      // 3. 전국 대표번호 (1588, 1544, 1566, 1577, 1600, 1688, 1800 등 8자리)
+      if (num.startsWith('1') && !num.startsWith('10') && !num.startsWith('11') && !num.startsWith('12')) {
+        if (num.length <= 4) return num;
+        return `${num.slice(0, 4)}-${num.slice(4, 8)}`;
+      }
+
+      // 4. 일반 휴대폰/인터넷전화/지방 지역번호 (010, 070, 031, 051 등)
+      if (num.length <= 3) return num;
+      if (num.length <= 6) return `${num.slice(0, 3)}-${num.slice(3)}`;
+      if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+      if (num.length <= 10) {
+        return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6, 10)}`;
+      }
+      return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+    }
+
+    // 텍스트 내 포함된 전화번호를 하이픈 형태로 변환 (상호/이름이 함께 섞여있어도 안전하게 변환)
+    function formatPhoneInText(text) {
+      if (!text || typeof text !== 'string') return '';
+      const trimmed = text.trim();
+      if (!trimmed) return '';
+
+      // 만약 순수 숫자, 공백, 하이픈만으로 이루어진 경우
+      if (/^[\d\s\-]+$/.test(trimmed)) {
+        return formatPhoneNumber(trimmed);
+      }
+
+      let res = text;
+      // 1) 050X 안심번호 (12자리: 0507-****-**** 또는 11자리)
+      res = res.replace(/(^|[^\d-])(050\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+      res = res.replace(/(^|[^\d-])(050\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+      // 2) 02 서울 (10자리 or 9자리)
+      res = res.replace(/(^|[^\d-])(02)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+      res = res.replace(/(^|[^\d-])(02)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+      // 3) 010, 070, 011~019, 031~064 (11자리 or 10자리)
+      res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+      res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+      // 4) 1588 등 8자리 전국대표번호
+      res = res.replace(/(^|[^\d-])(1[5-8]\d{2})(\d{4})([^\d-]|$)/g, '$1$2-$3$4');
+
+      return res;
+    }
+
+    // 연락처 입력 필드에 자동 하이픈 및 키 이벤트 바인딩
+    function attachPhoneNumberAutoHyphen(inputEl) {
+      if (!inputEl) return;
+
+      // Backspace로 하이픈 앞 숫자를 자연스럽게 지우도록 보정
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          const selStart = inputEl.selectionStart;
+          const selEnd = inputEl.selectionEnd;
+          if (selStart === selEnd && selStart > 0) {
+            if (inputEl.value[selStart - 1] === '-') {
+              e.preventDefault();
+              const oldVal = inputEl.value;
+              const newVal = oldVal.slice(0, selStart - 2) + oldVal.slice(selStart);
+              inputEl.value = formatPhoneNumber(newVal);
+              const newPos = Math.max(0, selStart - 2);
+              inputEl.setSelectionRange(newPos, newPos);
+              updateCalculations();
+            }
+          }
+        }
+      });
+
+      // 입력 시 실시간 하이픈 포맷팅
+      inputEl.addEventListener('input', () => {
+        const rawVal = inputEl.value;
+        if (/^[\d\s\-]+$/.test(rawVal)) {
+          const prevCursor = inputEl.selectionStart;
+          const prevLen = rawVal.length;
+          const formatted = formatPhoneNumber(rawVal);
+          inputEl.value = formatted;
+          if (prevCursor === prevLen) {
+            inputEl.setSelectionRange(formatted.length, formatted.length);
+          } else {
+            const diff = formatted.length - prevLen;
+            const newPos = Math.max(0, Math.min(formatted.length, prevCursor + diff));
+            inputEl.setSelectionRange(newPos, newPos);
+          }
+        } else {
+          // 이름/상호가 섞여 있는 경우
+          const formatted = formatPhoneInText(rawVal);
+          if (formatted !== rawVal) {
+            inputEl.value = formatted;
+          }
+        }
         updateCalculations();
       });
+
+      // 포커스 벗어날 때 정밀 포맷팅
+      inputEl.addEventListener('blur', () => {
+        inputEl.value = formatPhoneInText(inputEl.value);
+        updateCalculations();
+      });
+
+      // 붙여넣기(Paste) 시 즉각 포맷팅
+      inputEl.addEventListener('paste', () => {
+        setTimeout(() => {
+          inputEl.value = formatPhoneInText(inputEl.value);
+          updateCalculations();
+        }, 10);
+      });
+    }
+
+    // Contacts 바인딩
+    [contactLandlord, contactTenant, contactDirector, contactManager, contactRealtor, contactOwner, contactCustom].forEach(el => {
+      attachPhoneNumberAutoHyphen(el);
     });
 
     // Settings Modal (관리자 인증 000001 후 진입)
@@ -1539,16 +1671,29 @@ function doPost(e) {
     }
 
     // 6. 연락처 요약 (소유주 -> 임차인 -> 소장님 -> 관리자 -> 부동산 -> 등기소유자 -> 직접입력)
+    // 구글 스프레드시트 및 브리핑 카드에도 자동으로 하이픈(-) 적용
     const cParts = [];
-    if (contactLandlord && contactLandlord.value.trim()) cParts.push(`소유주 ${contactLandlord.value.trim()}`);
-    if (contactTenant && contactTenant.value.trim()) cParts.push(`임차인 ${contactTenant.value.trim()}`);
-    if (contactDirector && contactDirector.value.trim()) cParts.push(`소장님 ${contactDirector.value.trim()}`);
-    if (contactManager && contactManager.value.trim()) cParts.push(`관리자 ${contactManager.value.trim()}`);
-    if (contactRealtor && contactRealtor.value.trim()) cParts.push(`부동산 ${contactRealtor.value.trim()}`);
-    if (contactOwner && contactOwner.value.trim()) cParts.push(`등기소유자 ${contactOwner.value.trim()}`);
+    if (contactLandlord && contactLandlord.value.trim()) {
+      cParts.push(`소유주 ${formatPhoneInText(contactLandlord.value.trim())}`);
+    }
+    if (contactTenant && contactTenant.value.trim()) {
+      cParts.push(`임차인 ${formatPhoneInText(contactTenant.value.trim())}`);
+    }
+    if (contactDirector && contactDirector.value.trim()) {
+      cParts.push(`소장님 ${formatPhoneInText(contactDirector.value.trim())}`);
+    }
+    if (contactManager && contactManager.value.trim()) {
+      cParts.push(`관리자 ${formatPhoneInText(contactManager.value.trim())}`);
+    }
+    if (contactRealtor && contactRealtor.value.trim()) {
+      cParts.push(`부동산 ${formatPhoneInText(contactRealtor.value.trim())}`);
+    }
+    if (contactOwner && contactOwner.value.trim()) {
+      cParts.push(`등기소유자 ${formatPhoneInText(contactOwner.value.trim())}`);
+    }
     if (contactCustom && contactCustom.value.trim()) {
-      // 직접입력란은 입력한 데이터 그대로 출력 (예: 유원민 010-8888-8888)
-      cParts.push(contactCustom.value.trim());
+      // 직접입력란도 전화번호가 포함되어 있다면 하이픈 자동 적용 (예: 유원민 010-8888-8888)
+      cParts.push(formatPhoneInText(contactCustom.value.trim()));
     }
     contactsSummaryHidden.value = cParts.join(' | ');
   }
