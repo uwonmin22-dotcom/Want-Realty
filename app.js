@@ -1073,6 +1073,33 @@ function doPost(e) {
       updateCalculations();
     });
 
+    const btnParkingCarsMinus = document.getElementById('btnParkingCarsMinus');
+    const btnParkingCarsPlus = document.getElementById('btnParkingCarsPlus');
+
+    if (btnParkingCarsMinus && parkingCarsCount) {
+      btnParkingCarsMinus.addEventListener('click', (e) => {
+        e.preventDefault();
+        const current = parseInt(parkingCarsCount.value, 10);
+        const val = isNaN(current) ? 1 : current;
+        if (val > 0) {
+          parkingCarsCount.value = val - 1;
+        } else {
+          parkingCarsCount.value = 0;
+        }
+        updateCalculations();
+      });
+    }
+
+    if (btnParkingCarsPlus && parkingCarsCount) {
+      btnParkingCarsPlus.addEventListener('click', (e) => {
+        e.preventDefault();
+        const current = parseInt(parkingCarsCount.value, 10);
+        const val = isNaN(current) ? 0 : current;
+        parkingCarsCount.value = val + 1;
+        updateCalculations();
+      });
+    }
+
     if (parkingCarsCount) parkingCarsCount.addEventListener('input', updateCalculations);
     if (paidParkingCost) paidParkingCost.addEventListener('input', updateCalculations);
     if (parkingCustomInput) parkingCustomInput.addEventListener('input', updateCalculations);
@@ -1382,11 +1409,20 @@ function doPost(e) {
       submitForm();
     });
 
-    // Form Submit
-    listingForm.addEventListener('submit', (e) => {
-      e.preventDefault();
+    // Form Submit & Button Submit Click (모바일 터치 완벽 대응)
+    const btnSubmit = document.getElementById('btnSubmit');
+    function handleFormSubmit(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       showPreviewModal();
-    });
+    }
+
+    if (btnSubmit) {
+      btnSubmit.addEventListener('click', handleFormSubmit);
+    }
+    listingForm.addEventListener('submit', handleFormSubmit);
 
     // Form reset (Header 🔄 & Bottom 초기화)
     btnNewListing.addEventListener('click', resetFormWithConfirm);
@@ -1635,24 +1671,35 @@ function doPost(e) {
     } else {
       let mainSummary = '';
       const feeType = document.querySelector('input[name="parkingFeeType"]:checked')?.value || '무료';
+      
+      const rawCount = parkingCarsCount ? parkingCarsCount.value.trim() : '';
+      const hasCount = rawCount !== '' && !isNaN(parseInt(rawCount, 10));
+      const count = hasCount ? parseInt(rawCount, 10) : 1;
+
       if (feeType === '직접입력') {
         mainSummary = parkingCustomInput?.value?.trim() || '협의';
       } else if (feeType === '유료') {
-        const count = parseInt(parkingCarsCount?.value) || 1;
         const cost = paidParkingCost?.value?.trim();
+        const countLabel = count === 0 ? '유료 협의' : `유료 ${count}대`;
         if (cost) {
-          mainSummary = `유료 ${count}대 (월 ${cost}만)`;
+          mainSummary = `${countLabel} (월 ${cost}만)`;
         } else {
-          mainSummary = `유료 ${count}대`;
+          mainSummary = countLabel;
         }
       } else {
         // 무료
-        const count = parseInt(parkingCarsCount?.value) || 1;
         const addCost = paidParkingCost?.value?.trim();
-        if (addCost) {
-          mainSummary = `무료 ${count}대 (추가 대당 ${addCost}만)`;
+        let freeLabel = '';
+        if (count === 0) {
+          freeLabel = '무료 불가';
         } else {
-          mainSummary = count > 0 ? `무료 ${count}대` : '무료 협의';
+          freeLabel = `무료 ${count}대`;
+        }
+
+        if (addCost) {
+          mainSummary = `${freeLabel} (추가 대당 ${addCost}만)`;
+        } else {
+          mainSummary = freeLabel;
         }
       }
 
@@ -1768,18 +1815,28 @@ function doPost(e) {
     const { dataObj, rowArray } = getPreparedSheetData();
 
     if (!dataObj.listingNumber) {
-      showToast('매물번호를 입력해주세요');
-      listingNumberInput.focus();
+      showToast('⚠️ 매물번호를 입력해주세요');
+      if (listingNumberInput) {
+        listingNumberInput.focus();
+        listingNumberInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     if (!dataObj.dong) {
-      showToast('지번동을 선택해주세요');
-      dongInput.focus();
+      showToast('⚠️ 지번동을 선택해주세요');
+      if (dongInput) {
+        dongInput.focus();
+        dongInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
-    if (!dataObj.address) {
-      showToast('지번주소를 입력해주세요');
-      addressInput.focus();
+    const bonbun = bonbunInput ? bonbunInput.value.trim() : '';
+    if (!bonbun || !dataObj.address) {
+      showToast('⚠️ 지번(본번)을 입력해주세요');
+      if (bonbunInput) {
+        bonbunInput.focus();
+        bonbunInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -2051,6 +2108,7 @@ function doPost(e) {
 
     // Render fresh Gu and Dong with the next auto listing number
     renderGuAndDongUI();
+    if (parkingCarsCount) parkingCarsCount.value = '1';
     if (parkingVisitorBox) parkingVisitorBox.style.display = 'none';
     if (parkingCostLabel) parkingCostLabel.textContent = '추가 주차 (대당)';
     if (paidParkingCost) paidParkingCost.placeholder = '';

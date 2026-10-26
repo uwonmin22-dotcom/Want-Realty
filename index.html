@@ -70,7 +70,7 @@
     </div>
 
     <!-- Main Form -->
-    <form id="listingForm" class="listing-form" autocomplete="off">
+    <form id="listingForm" class="listing-form" autocomplete="off" novalidate>
 
       <!-- Section 1: 기본 정보 & 위치 -->
       <section class="form-card">
@@ -182,7 +182,7 @@
               </div>
             </div>
             <!-- 시트 반영 최종 지번 (히든 및 프리뷰) -->
-            <input type="hidden" id="addressInput" name="address" required>
+            <input type="hidden" id="addressInput" name="address">
             <div class="jibun-preview-bar">
               <span class="preview-label">시트 반영 지번:</span>
               <span class="preview-val" id="addressPreviewVal">입력 대기중</span>
@@ -211,7 +211,7 @@
                 <input type="text" id="totalFloorInput" placeholder="5" style="text-align: center; font-weight: 700; flex: 1;">
               </div>
               <!-- 시트 전송용 자동 조합된 호실/층수 (예: 302/5) -->
-              <input type="hidden" id="roomAndFloor" name="roomAndFloor" required>
+              <input type="hidden" id="roomAndFloor" name="roomAndFloor">
             </div>
           </div>
 
@@ -405,15 +405,19 @@
                 <div class="form-row">
                   <div class="form-group col-6">
                     <label class="form-label-sub" id="parkingCarsLabel">무료 주차 대수</label>
-                    <div class="input-unit">
-                      <input type="number" id="parkingCarsCount" placeholder="1" value="1" min="0">
-                      <span class="unit">대</span>
+                    <div class="stepper-input-group">
+                      <button type="button" class="btn-step" id="btnParkingCarsMinus" title="1대 감소">−</button>
+                      <div class="input-unit stepper-unit">
+                        <input type="number" id="parkingCarsCount" placeholder="1" value="1" min="0" step="1" inputmode="numeric">
+                        <span class="unit">대</span>
+                      </div>
+                      <button type="button" class="btn-step" id="btnParkingCarsPlus" title="1대 증가">+</button>
                     </div>
                   </div>
                   <div class="form-group col-6">
                     <label class="form-label-sub" id="parkingCostLabel">추가 주차 (대당)</label>
                     <div class="input-unit">
-                      <input type="number" id="paidParkingCost" placeholder="" min="0">
+                      <input type="number" id="paidParkingCost" placeholder="비용(만)" min="0" inputmode="numeric">
                       <span class="unit">만원</span>
                     </div>
                   </div>
