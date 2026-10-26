@@ -402,24 +402,28 @@
 
               <!-- 무료 / 유료 기본 대수 및 주차비 입력 박스 -->
               <div id="parkingDetailsBox" class="parking-details">
-                <div class="form-row">
-                  <div class="form-group col-6">
+                <!-- 1. 주차 대수 원터치 조절 스텝퍼 (넓고 시원하게 배치) -->
+                <div class="form-group parking-stepper-box">
+                  <div class="parking-stepper-header">
                     <label class="form-label-sub" id="parkingCarsLabel">무료 주차 대수</label>
-                    <div class="stepper-input-group">
-                      <button type="button" class="btn-step" id="btnParkingCarsMinus" title="1대 감소">−</button>
-                      <div class="input-unit stepper-unit">
-                        <input type="number" id="parkingCarsCount" placeholder="1" value="1" min="0" step="1" inputmode="numeric">
-                        <span class="unit">대</span>
-                      </div>
-                      <button type="button" class="btn-step" id="btnParkingCarsPlus" title="1대 증가">+</button>
-                    </div>
+                    <span class="parking-count-badge" id="parkingCountBadge">1대</span>
                   </div>
-                  <div class="form-group col-6">
-                    <label class="form-label-sub" id="parkingCostLabel">추가 주차 (대당)</label>
-                    <div class="input-unit">
-                      <input type="number" id="paidParkingCost" placeholder="비용(만)" min="0" inputmode="numeric">
-                      <span class="unit">만원</span>
+                  <div class="stepper-full-bar">
+                    <button type="button" class="btn-step btn-step-minus" id="btnParkingCarsMinus" title="1대 감소">−</button>
+                    <div class="stepper-number-box">
+                      <input type="number" id="parkingCarsCount" placeholder="1" value="1" min="0" step="1" inputmode="numeric">
+                      <span class="stepper-unit-text">대</span>
                     </div>
+                    <button type="button" class="btn-step btn-step-plus" id="btnParkingCarsPlus" title="1대 증가">+</button>
+                  </div>
+                </div>
+
+                <!-- 2. 주차비 입력란 (추가 주차 또는 월 주차비) -->
+                <div class="form-group parking-cost-box">
+                  <label class="form-label-sub" id="parkingCostLabel">추가 주차 (대당)</label>
+                  <div class="input-unit">
+                    <input type="number" id="paidParkingCost" placeholder="비용 (대당 만원, 협의 시 공란)" min="0" inputmode="numeric">
+                    <span class="unit">만원</span>
                   </div>
                 </div>
               </div>

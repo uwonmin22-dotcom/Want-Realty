@@ -641,6 +641,77 @@ function doPost(e) {
     }, duration);
   }
 
+  // ==========================================
+  // 연락처 전화번호 자동 하이픈 포맷팅 전역 함수
+  // (010, 070, 0507, 02, 전국 지역번호, 1588 등 지원)
+  // ==========================================
+  function formatPhoneNumber(val) {
+    if (!val) return '';
+    const num = String(val).replace(/[^0-9]/g, '');
+    if (!num) return '';
+
+    // 1. 서울 유선전화 (02) - 9자리(02-XXX-XXXX) 또는 10자리(02-XXXX-XXXX)
+    if (num.startsWith('02')) {
+      if (num.length <= 2) return num;
+      if (num.length <= 5) return `${num.slice(0, 2)}-${num.slice(2)}`;
+      if (num.length <= 8) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5)}`;
+      if (num.length === 9) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5, 9)}`;
+      return `${num.slice(0, 2)}-${num.slice(2, 6)}-${num.slice(6, 10)}`;
+    }
+
+    // 2. 안심번호/가상번호 (0502, 0504, 0505, 0507 등 050으로 시작)
+    if (num.startsWith('050')) {
+      if (num.length <= 4) return num;
+      if (num.length <= 8) return `${num.slice(0, 4)}-${num.slice(4)}`;
+      return `${num.slice(0, 4)}-${num.slice(4, 8)}-${num.slice(8, 12)}`;
+    }
+
+    // 3. 전국 대표번호 (1588, 1544, 1566, 1577, 1600, 1688, 1800 등 8자리)
+    if (num.startsWith('1') && !num.startsWith('10') && !num.startsWith('11') && !num.startsWith('12')) {
+      if (num.length <= 4) return num;
+      return `${num.slice(0, 4)}-${num.slice(4, 8)}`;
+    }
+
+    // 4. 일반 휴대폰/인터넷전화/지방 지역번호 (010, 070, 031, 051 등)
+    if (num.length <= 3) return num;
+    if (num.length <= 6) return `${num.slice(0, 3)}-${num.slice(3)}`;
+    if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+    if (num.length <= 10) {
+      return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6, 10)}`;
+    }
+    return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+  }
+
+  // 텍스트 내 포함된 전화번호를 하이픈 형태로 변환 (상호/이름이 함께 섞여있어도 안전하게 변환)
+  function formatPhoneInText(text) {
+    if (!text || typeof text !== 'string') return '';
+    const trimmed = text.trim();
+    if (!trimmed) return '';
+
+    // 만약 순수 숫자, 공백, 하이픈만으로 이루어진 경우
+    if (/^[\d\s\-]+$/.test(trimmed)) {
+      return formatPhoneNumber(trimmed);
+    }
+
+    let res = text;
+    // 1) 050X 안심번호 (12자리: 0507-****-**** 또는 11자리)
+    res = res.replace(/(^|[^\d-])(050\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+    res = res.replace(/(^|[^\d-])(050\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+    // 2) 02 서울 (10자리 or 9자리)
+    res = res.replace(/(^|[^\d-])(02)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+    res = res.replace(/(^|[^\d-])(02)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+    // 3) 010, 070, 011~019, 031~064 (11자리 or 10자리)
+    res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+    res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
+
+    // 4) 1588 등 8자리 전국대표번호
+    res = res.replace(/(^|[^\d-])(1[5-8]\d{2})(\d{4})([^\d-]|$)/g, '$1$2-$3$4');
+
+    return res;
+  }
+
   // Load Cached Jibun Map
   function loadJibunMap() {
     const saved = localStorage.getItem('smart_listing_jibun_map');
@@ -1024,7 +1095,7 @@ function doPost(e) {
           if (parkingCustomBox) parkingCustomBox.style.display = 'none';
           if (parkingDetailsBox) parkingDetailsBox.style.display = 'block';
           if (parkingCarsLabel) parkingCarsLabel.textContent = '유료 주차 대수';
-          if (parkingCostLabel) parkingCostLabel.textContent = '월 주차비 (대당 만원)';
+          if (parkingCostLabel) parkingCostLabel.textContent = '월 주차비 (대당)';
           if (paidParkingCost) {
             paidParkingCost.disabled = false;
             paidParkingCost.placeholder = '예: 15';
@@ -1176,77 +1247,7 @@ function doPost(e) {
     });
     moveInDetailText.addEventListener('input', updateCalculations);
 
-    // ==========================================
-    // 연락처 전화번호 자동 하이픈 포맷팅 로직
-    // (010, 070, 0507, 02, 전국 지역번호, 1588 등 지원)
-    // ==========================================
-    function formatPhoneNumber(val) {
-      if (!val) return '';
-      const num = String(val).replace(/[^0-9]/g, '');
-      if (!num) return '';
-
-      // 1. 서울 유선전화 (02) - 9자리(02-XXX-XXXX) 또는 10자리(02-XXXX-XXXX)
-      if (num.startsWith('02')) {
-        if (num.length <= 2) return num;
-        if (num.length <= 5) return `${num.slice(0, 2)}-${num.slice(2)}`;
-        if (num.length <= 8) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5)}`;
-        if (num.length === 9) return `${num.slice(0, 2)}-${num.slice(2, 5)}-${num.slice(5, 9)}`;
-        return `${num.slice(0, 2)}-${num.slice(2, 6)}-${num.slice(6, 10)}`;
-      }
-
-      // 2. 안심번호/가상번호 (0502, 0504, 0505, 0507 등 050으로 시작)
-      // 예: 0507-****-**** (12자리) 또는 050X-***-**** (11자리)
-      if (num.startsWith('050')) {
-        if (num.length <= 4) return num;
-        if (num.length <= 8) return `${num.slice(0, 4)}-${num.slice(4)}`;
-        return `${num.slice(0, 4)}-${num.slice(4, 8)}-${num.slice(8, 12)}`;
-      }
-
-      // 3. 전국 대표번호 (1588, 1544, 1566, 1577, 1600, 1688, 1800 등 8자리)
-      if (num.startsWith('1') && !num.startsWith('10') && !num.startsWith('11') && !num.startsWith('12')) {
-        if (num.length <= 4) return num;
-        return `${num.slice(0, 4)}-${num.slice(4, 8)}`;
-      }
-
-      // 4. 일반 휴대폰/인터넷전화/지방 지역번호 (010, 070, 031, 051 등)
-      if (num.length <= 3) return num;
-      if (num.length <= 6) return `${num.slice(0, 3)}-${num.slice(3)}`;
-      if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-      if (num.length <= 10) {
-        return `${num.slice(0, 3)}-${num.slice(3, 6)}-${num.slice(6, 10)}`;
-      }
-      return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    }
-
-    // 텍스트 내 포함된 전화번호를 하이픈 형태로 변환 (상호/이름이 함께 섞여있어도 안전하게 변환)
-    function formatPhoneInText(text) {
-      if (!text || typeof text !== 'string') return '';
-      const trimmed = text.trim();
-      if (!trimmed) return '';
-
-      // 만약 순수 숫자, 공백, 하이픈만으로 이루어진 경우
-      if (/^[\d\s\-]+$/.test(trimmed)) {
-        return formatPhoneNumber(trimmed);
-      }
-
-      let res = text;
-      // 1) 050X 안심번호 (12자리: 0507-****-**** 또는 11자리)
-      res = res.replace(/(^|[^\d-])(050\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-      res = res.replace(/(^|[^\d-])(050\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-
-      // 2) 02 서울 (10자리 or 9자리)
-      res = res.replace(/(^|[^\d-])(02)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-      res = res.replace(/(^|[^\d-])(02)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-
-      // 3) 010, 070, 011~019, 031~064 (11자리 or 10자리)
-      res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{4})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-      res = res.replace(/(^|[^\d-])(0[1-9]\d)(\d{3})(\d{4})([^\d-]|$)/g, '$1$2-$3-$4$5');
-
-      // 4) 1588 등 8자리 전국대표번호
-      res = res.replace(/(^|[^\d-])(1[5-8]\d{2})(\d{4})([^\d-]|$)/g, '$1$2-$3$4');
-
-      return res;
-    }
+    // 연락처 입력 필드에 자동 하이픈 및 키 이벤트 바인딩
 
     // 연락처 입력 필드에 자동 하이픈 및 키 이벤트 바인딩
     function attachPhoneNumberAutoHyphen(inputEl) {
@@ -1711,6 +1712,22 @@ function doPost(e) {
       }
 
       parkingSummaryHidden.value = mainSummary;
+
+      // 주차 대수 상단 뱃지 실시간 텍스트 갱신
+      const parkingCountBadge = document.getElementById('parkingCountBadge');
+      if (parkingCountBadge) {
+        if (count === 0) {
+          parkingCountBadge.textContent = '0대 (불가/협의)';
+          parkingCountBadge.style.background = '#fef2f2';
+          parkingCountBadge.style.color = '#dc2626';
+          parkingCountBadge.style.borderColor = '#fca5a5';
+        } else {
+          parkingCountBadge.textContent = `${count}대 선택됨`;
+          parkingCountBadge.style.background = '#eff6ff';
+          parkingCountBadge.style.color = 'var(--primary)';
+          parkingCountBadge.style.borderColor = '#bfdbfe';
+        }
+      }
     }
 
     // 4. 구조 요약 (홀, 룸, 테라스, 루프탑, 수도시설, 파티션)

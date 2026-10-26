@@ -871,22 +871,43 @@ select:focus {
   gap: 12px;
 }
 
-/* 주차 대수 원터치 조절 스텝퍼 */
-.stepper-input-group {
+/* 주차 대수 전용 뷰 & 스텝퍼 바 */
+.parking-stepper-box {
+  margin-bottom: 0;
+}
+
+.parking-stepper-header {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.parking-count-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: #eff6ff;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid #bfdbfe;
+}
+
+.stepper-full-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
 }
 
 .btn-step {
-  width: 42px;
-  height: 48px;
-  background: #f1f5f9;
-  border: 1.5px solid var(--border-color);
+  width: 56px;
+  height: 52px;
+  background: #ffffff;
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: var(--secondary);
   display: flex;
   align-items: center;
@@ -896,42 +917,73 @@ select:focus {
   transition: all 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-step:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: #f1f5f9;
+  border-color: var(--primary);
 }
 
 .btn-step:active {
   background: var(--primary);
   color: #ffffff;
   border-color: var(--primary);
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
-.stepper-unit {
+.stepper-number-box {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #ffffff;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+  height: 52px;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
 }
 
-.stepper-unit input {
-  text-align: center;
-  font-size: 1.2rem !important;
-  font-weight: 800 !important;
+.stepper-number-box input {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  text-align: center !important;
+  font-size: 1.5rem !important;
+  font-weight: 900 !important;
   color: var(--primary) !important;
-  padding-left: 6px !important;
-  padding-right: 28px !important;
+  padding: 0 36px 0 10px !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.stepper-unit-text {
+  position: absolute;
+  right: 14px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--primary);
+  pointer-events: none;
+}
+
+.parking-cost-box {
+  margin-bottom: 0;
+  padding-top: 4px;
 }
 
 #paidParkingCost {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  min-height: 50px;
 }
 
 #parkingCustomInput,
 #parkingVisitorInput {
-  min-height: 48px;
-  font-size: 1rem;
+  min-height: 50px;
+  font-size: 1.05rem;
 }
 
 /* Structure Checkboxes & Chips */
