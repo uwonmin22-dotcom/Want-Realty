@@ -232,8 +232,8 @@ function doPost(e) {
     // D열(매물번호) 정렬: A, B, C열(광고, 촬영, 상황) 자동 채움
     var headers = sheet.getRange(2, 1, 1, Math.min(10, sheet.getLastColumn())).getValues()[0];
     var isColD = false;
-    // 🌟 A열(광고=''), B열(담당자=장/웅/봄/유), C열(상황='-') 무조건 연결하여 D열부터 매물번호 배치!
-    var manager = payload.manager || payload.photographer || '장';
+    // 🌟 A열(광고=''), B열(담당자=웅/봄/유), C열(상황='-') 무조건 연결하여 D열부터 매물번호 배치!
+    var manager = payload.manager || payload.photographer || '웅';
     var finalRow = ['', manager, '-'].concat(rowData);
     
     // 🌟 [핵심] D열(매물번호)과 E열(지번동)이 모두 비어있는 첫 행(예: 731행) 탐색
@@ -274,7 +274,7 @@ function doPost(e) {
     // 시트에 전체 행 데이터 삽입
     sheet.getRange(targetRow, 1, 1, finalRow.length).setValues([finalRow]);
     
-    // 🌟 B열(2번째 열, 담당자: 장/웅/봄/유) 데이터 기록 100% 보장!
+    // 🌟 B열(2번째 열, 담당자: 웅/봄/유) 데이터 기록 100% 보장!
     sheet.getRange(targetRow, 2).setValue(manager);
     
     // 🌟 엘베 열(18번째 열, R열) 네이티브 체크박스 컨트롤 생성 및 체크/해제 반영

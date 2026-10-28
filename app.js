@@ -65,13 +65,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let sheetJibunMap = loadJibunMap(); // key: "서초구_서초동_1638-2" -> { lastCode: "A100-20", nextCode: "A100-21" }
   let selectedGu = localStorage.getItem(STORAGE_KEY_LAST_GU) || '서초구';
   let selectedDong = localStorage.getItem(STORAGE_KEY_LAST_DONG) || (selectedGu === '서초구' ? '서초동' : '논현동');
-  let selectedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || '장';
+  const VALID_MANAGERS = ['웅', '봄', '유'];
+  let savedInitialManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER);
+  if (!VALID_MANAGERS.includes(savedInitialManager)) {
+    savedInitialManager = '웅';
+    localStorage.setItem(STORAGE_KEY_LAST_MANAGER, '웅');
+  }
+  let selectedManager = savedInitialManager;
   let currentUploadedPhotos = []; // { id, name, dataUrl }
 
   // 동일지번 매물추가 모드 상태 변수
   let isSameAddressMode = false;
 
-  // DOM Elements - 담당자 (장, 웅, 봄, 유)
+  // DOM Elements - 담당자 (웅, 봄, 유)
   const managerInputs = document.querySelectorAll('input[name="manager"]');
 
   // DOM Elements - Gu & Dong & Listing Number
@@ -207,9 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetDefaultCounters = document.getElementById('btnResetDefaultCounters');
   const prefRememberCommon = document.getElementById('prefRememberCommon');
 
-  // PIN 보안 인증 (원트부동산 팀원 전용 7823)
-  const PIN_CODE = '7823';
-  const STORAGE_KEY_PIN_UNLOCKED = 'want_realty_pin_unlocked_7823';
+  // PIN 보안 인증 (원트부동산 팀원 전용 2378)
+  const PIN_CODE = '2378';
+  const STORAGE_KEY_PIN_UNLOCKED = 'want_realty_pin_unlocked_2378';
   const pinLockScreen = document.getElementById('pinLockScreen');
   const pinCard = document.getElementById('pinCard');
   const pinInput = document.getElementById('pinInput');
@@ -419,8 +425,8 @@ function doPost(e) {
       sheet = ss.getActiveSheet();
     }
     
-    // 🌟 A열(광고=''), B열(담당자=장/웅/봄/유), C열(상황='-') 무조건 연결하여 D열부터 매물번호 배치!
-    var manager = payload.manager || payload.photographer || '장';
+    // 🌟 A열(광고=''), B열(담당자=웅/봄/유), C열(상황='-') 무조건 연결하여 D열부터 매물번호 배치!
+    var manager = payload.manager || payload.photographer || '웅';
     var finalRow = ['', manager, '-'].concat(rowData);
     
     // 🌟 [핵심] D열(매물번호)과 E열(지번동)이 모두 비어있는 첫 행(예: 731행) 탐색
@@ -461,7 +467,7 @@ function doPost(e) {
     // 시트에 전체 행 데이터 삽입
     sheet.getRange(targetRow, 1, 1, finalRow.length).setValues([finalRow]);
     
-    // 🌟 B열(2번째 열, 담당자: 장/웅/봄/유) 데이터 기록 100% 보장!
+    // 🌟 B열(2번째 열, 담당자: 웅/봄/유) 데이터 기록 100% 보장!
     sheet.getRange(targetRow, 2).setValue(manager);
     
     // 🌟 엘베 열(18번째 열, R열) 네이티브 체크박스 컨트롤 생성 및 체크/해제 반영
@@ -1051,10 +1057,11 @@ function doPost(e) {
     rentInput.addEventListener('input', updateCalculations);
     maintenanceInput.addEventListener('input', updateCalculations);
 
-    // 담당자 inputs (장, 웅, 봄, 유 -> 구글시트 B열 매핑)
-    const savedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || '장';
+    // 담당자 inputs (웅, 봄, 유 -> 구글시트 B열 매핑)
+    const savedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER);
+    const initialManager = VALID_MANAGERS.includes(savedManager) ? savedManager : '웅';
     managerInputs.forEach(input => {
-      if (input.value === savedManager) {
+      if (input.value === initialManager) {
         input.checked = true;
       }
       input.addEventListener('change', (e) => {
@@ -1463,7 +1470,7 @@ function doPost(e) {
     }
   }
 
-  // PIN 보안 인증 함수 (PIN: 7823)
+  // PIN 보안 인증 함수 (PIN: 2378)
   function handlePinUnlock() {
     const val = pinInput ? String(pinInput.value).trim() : '';
     if (val === PIN_CODE) {
@@ -1786,7 +1793,7 @@ function doPost(e) {
   function getPreparedSheetData() {
     updateCalculations();
 
-    const currentSelectedManager = document.querySelector('input[name="manager"]:checked')?.value || selectedManager || '장';
+    const currentSelectedManager = document.querySelector('input[name="manager"]:checked')?.value || selectedManager || '웅';
     const selectedToilet = document.querySelector('input[name="toilet"]:checked')?.value || '';
     const selectedElevator = document.querySelector('input[name="elevator"]:checked')?.value || '유';
     const selectedParkingType = document.querySelector('input[name="parkingType"]:checked')?.value || '';
@@ -2097,8 +2104,9 @@ function doPost(e) {
   function clearFormCleanState() {
     localStorage.removeItem(STORAGE_KEY_DRAFT);
 
-    // 🌟 마지막 선택된 담당자(장/웅/봄/유) 보존
-    const preservedManager = localStorage.getItem(STORAGE_KEY_LAST_MANAGER) || selectedManager || '장';
+    // 🌟 마지막 선택된 담당자(웅/봄/유) 보존
+    const lastMgr = localStorage.getItem(STORAGE_KEY_LAST_MANAGER);
+    const preservedManager = VALID_MANAGERS.includes(lastMgr) ? lastMgr : (VALID_MANAGERS.includes(selectedManager) ? selectedManager : '웅');
 
     // Reset all form inputs completely (연락처, 금액, 주소, 비고 등 전액 초기화)
     listingForm.reset();

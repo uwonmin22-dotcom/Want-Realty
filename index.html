@@ -22,7 +22,7 @@
 </head>
 
 <body>
-  <!-- 사내 보안 PIN 잠금 화면 (PIN 번호: 7823) -->
+  <!-- 사내 보안 PIN 잠금 화면 (PIN 번호: 2378) -->
   <div id="pinLockScreen" class="pin-lock-overlay">
     <div class="pin-card" id="pinCard">
       <div class="pin-icon-badge">🔒</div>
@@ -80,16 +80,12 @@
         </div>
         <div class="card-body">
 
-          <!-- 담당자 선택 (장 / 웅 / 봄 / 유) -> 스프레드시트 B열 자동 매핑 -->
+          <!-- 담당자 선택 (웅 / 봄 / 유) -> 스프레드시트 B열 자동 매핑 -->
           <div class="form-group">
             <label class="form-label required">담당자</label>
             <div class="segmented-control manager-segment" id="managerSegment">
               <label class="segment-btn">
-                <input type="radio" name="manager" value="장" checked>
-                <span>장</span>
-              </label>
-              <label class="segment-btn">
-                <input type="radio" name="manager" value="웅">
+                <input type="radio" name="manager" value="웅" checked>
                 <span>웅</span>
               </label>
               <label class="segment-btn">
