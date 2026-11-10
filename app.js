@@ -1115,8 +1115,12 @@ function doPost(e) {
         showToast(`⚡ ${bldName} 매물 정보가 성공적으로 채워졌습니다!`);
       } catch (err) {
         console.error('Naver fetch error:', err);
-        showNaverStatus('error', `❌ ${err.message}`);
-        showToast(`네이버 조회 오류: ${err.message}`);
+        let userMsg = err.message;
+        if (err.name === 'TypeError' || String(err).includes('fetch') || String(err).includes('NetworkError')) {
+          userMsg = `우회 서버에 연결할 수 없습니다. 상단 [⚙️ 서버설정]에서 서버 주소를 확인해주세요.`;
+        }
+        showNaverStatus('error', `❌ ${userMsg}`);
+        showToast(userMsg);
       } finally {
         setNaverLoading(false);
       }
