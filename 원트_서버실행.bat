@@ -24,5 +24,5 @@ echo   ★ 서버가 정상 작동 중입니다!
 echo   이 창을 닫지 마시고 '최소화'해두시면 됩니다.
 echo ==========================================================
 echo.
-cloudflared.exe tunnel --url http://127.0.0.1:8000
+cloudflared.exe tunnel --url http://127.0.0.1:8888
 pause
