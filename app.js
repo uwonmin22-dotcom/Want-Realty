@@ -1216,16 +1216,19 @@ function doPost(e) {
       // 9. 주차 (자주 / 기계 / 혼합 및 주차대수)
       if (data.parkingType) {
         document.querySelectorAll('input[name="parkingType"]').forEach(r => {
-          r.checked = (r.value === data.parkingType);
+          r.checked = (r.value === data.parkingType || (data.parkingType && data.parkingType.startsWith(r.value)));
         });
+      }
+      if (parkingNotAllowed) {
+        const isNotAllowed = !!data.parkingNotAllowed;
+        parkingNotAllowed.checked = isNotAllowed;
+        const pDetails = document.getElementById('parkingDetailsBox');
+        if (pDetails) pDetails.style.display = isNotAllowed ? 'none' : 'block';
       }
       if (parkingCarsCount && data.parkingCars !== undefined) {
         parkingCarsCount.value = data.parkingCars;
         const badge = document.getElementById('parkingCountBadge');
         if (badge) badge.textContent = `${data.parkingCars}대`;
-      }
-      if (parkingNotAllowed) {
-        parkingNotAllowed.checked = false;
       }
 
       // 10. 내부구조 (홀, 룸, 테라스, 루프탑, 수도시설, 파티션 자동 체크)

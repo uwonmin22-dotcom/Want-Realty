@@ -348,20 +348,51 @@ class NaverRealEstateFetcher:
         exclusive_pyeong = round(exclusive_m2 * 0.3025, 1) if exclusive_m2 else 0
         contract_pyeong = round(supply_m2 * 0.3025, 1) if supply_m2 else (round(float(pyeong_area), 1) if pyeong_area else 0)
 
+        # 전체 텍스트 (매물설명글, 제목글/특징, 모바일 HTML)
+        full_desc = desc + " " + feature + " " + html
+
         # 엘리베이터
         etc_facilities = facility_info.get("etc", [])
         has_elevator = "ELEVATOR" in etc_facilities or "엘베" in feature or "엘리베이터" in desc
 
-        # 주차
+        # 주차 방식 및 주차 대수 정밀 감지 (매물설명글, 제목글 등)
+        has_jaju = bool(re.search(r'자주식|자주\b', full_desc))
+        has_machine = bool(re.search(r'기계식|기계\b|카리프트|타워주차|주차타워', full_desc))
+
+        parking_type = "자주"
+        if has_jaju and has_machine:
+            parking_type = "혼합"
+        elif has_machine:
+            parking_type = "기계"
+        elif has_jaju:
+            parking_type = "자주"
+
         total_parking = facility_info.get("totalParkingCount", 0)
         is_parking_possible = facility_info.get("isParkingPossible", False)
+        is_not_allowed = bool(re.search(r'주차\s*불가|주차불가|주차\s*안됨', full_desc))
         parking_cars = 1 if (is_parking_possible or total_parking > 0) else 0
-        p_match = re.search(r'주차\s*([0-9]+)\s*대', desc + " " + feature)
-        if p_match:
-            try:
-                parking_cars = int(p_match.group(1))
-            except:
-                pass
+
+        if is_not_allowed:
+            parking_cars = 0
+        else:
+            # 1순위: 무료 주차 대수 (예: 무료주차 1대, 무료 1대, 1대 무료)
+            m_free = re.search(r'(?:무료\s*주차|주차\s*무료|무료)\s*[:：]?\s*([0-9]+)\s*대', full_desc) or re.search(r'([0-9]+)\s*대\s*무료', full_desc)
+            if m_free:
+                try:
+                    parking_cars = int(m_free.group(1))
+                except:
+                    pass
+            else:
+                # 2순위: 개별 배정 주차 대수 (단 총 20대 같은 건물전체 주차 제외)
+                for m in re.finditer(r'(총\s*)?(?:주차|자주식|기계식)\s*[:：]?\s*([0-9]+)\s*대', full_desc):
+                    if not m.group(1):
+                        try:
+                            val = int(m.group(2))
+                            if val <= 10:
+                                parking_cars = val
+                                break
+                        except:
+                            pass
 
         # 화장실
         toilet_type = "내부구분"
@@ -369,7 +400,6 @@ class NaverRealEstateFetcher:
             toilet_type = "외부구분"
 
         # 내부구조 자동 감지 (홀, 룸 개수, 테라스, 루프탑, 수도시설, 파티션)
-        full_desc = desc + " " + feature + " " + html
         has_hall = bool(re.search(r'홀\b|홀\s*[+]|홀\s*및|홀\s*과|홀\s*1|업무홀|중앙홀|메인홀|홀형태|홀구조', full_desc))
         has_terrace = bool(re.search(r'테라스|단독테라스|야외테라스', full_desc))
         has_rooftop = bool(re.search(r'루프탑|옥상단독|옥상정원|옥상테라스', full_desc))
@@ -439,8 +469,9 @@ class NaverRealEstateFetcher:
             "rent": rent_man,
             "maintenance": maintenance_man,
             "elevator": "TRUE" if has_elevator else "FALSE",
-            "parkingType": "자주",
+            "parkingType": parking_type,
             "parkingCars": parking_cars,
+            "parkingNotAllowed": is_not_allowed,
             "toiletType": toilet_type,
             "roomCount": room_count,
             "hasRoom": has_room,
