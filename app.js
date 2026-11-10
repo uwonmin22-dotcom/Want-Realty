@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Naver Real Estate Auto Import Elements & Config
   const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
-  const DEFAULT_NAVER_API_URL = 'https://poems-trademark-everywhere-specifically.trycloudflare.com';
+  const DEFAULT_NAVER_API_URL = 'https://want-realty-proxy.loca.lt';
   let savedNaverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL);
   if (!savedNaverApiUrl || savedNaverApiUrl.includes('localhost') || savedNaverApiUrl.includes('onrender.com') || savedNaverApiUrl.includes('vercel.app')) {
     savedNaverApiUrl = DEFAULT_NAVER_API_URL;
@@ -1097,7 +1097,12 @@ function doPost(e) {
         const cleanUrl = naverApiUrl.replace(/\/+$/, '');
         const apiUrl = `${cleanUrl}/api/naver-article?articleId=${encodeURIComponent(articleId)}`;
 
-        const resp = await fetch(apiUrl, { mode: 'cors' });
+        const resp = await fetch(apiUrl, {
+          mode: 'cors',
+          headers: {
+            'Bypass-Tunnel-Reminder': 'true'
+          }
+        });
         if (!resp.ok) {
           let errMsg = `조회 실패 (HTTP ${resp.status})`;
           try {
