@@ -80,8 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Naver Real Estate Auto Import Elements & Config
   const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
-  const DEFAULT_NAVER_API_URL = 'http://localhost:8000';
-  let naverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL) || DEFAULT_NAVER_API_URL;
+  const DEFAULT_NAVER_API_URL = 'https://want-realty.onrender.com';
+  let savedNaverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL);
+  if (!savedNaverApiUrl || savedNaverApiUrl.includes('localhost')) {
+    savedNaverApiUrl = DEFAULT_NAVER_API_URL;
+    localStorage.setItem(STORAGE_KEY_NAVER_API_URL, DEFAULT_NAVER_API_URL);
+  }
+  let naverApiUrl = savedNaverApiUrl;
 
   const naverArticleIdInput = document.getElementById('naverArticleId');
   const btnFetchNaver = document.getElementById('btnFetchNaver');

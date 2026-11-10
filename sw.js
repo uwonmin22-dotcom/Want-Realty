@@ -1,5 +1,5 @@
 // 원트답사장 - Service Worker for PWA
-const CACHE_NAME = 'want-dapsa-v23';
+const CACHE_NAME = 'want-dapsa-v24';
 const STATIC_ASSETS = [
   './',
   './index.html',
