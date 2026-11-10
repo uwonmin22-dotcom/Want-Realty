@@ -325,13 +325,13 @@ class NaverRealEstateFetcher:
                 target_floor = fl_match.group(1)
                 total_floor = fl_match.group(2)
 
-        # ★ 호실: 사용자가 직접 수정하기 편하도록 노출 중인 현재 층수(예: '3층' -> '3', 지하1층 -> 'B1')를 숫자/기호만 반영
+        # ★ 호실: 사용자가 직접 수정하기 편하도록 노출 중인 현재 층수(예: '3층' -> '3', 지하1층 -> '-1')를 숫자/기호만 반영
         room_text = ""
         if target_floor and target_floor != "-":
             tf_str = str(target_floor).strip()
             if tf_str.startswith("-") or tf_str.upper().startswith("B") or "지하" in tf_str:
                 num = re.sub(r'[^0-9]', '', tf_str) or "1"
-                room_text = f"B{num}"
+                room_text = f"-{num}"
             else:
                 num = re.sub(r'[^0-9]', '', tf_str)
                 room_text = num if num else tf_str.replace("층", "").strip()

@@ -1162,11 +1162,13 @@ function doPost(e) {
         buildingName.value = data.buildingName || '';
       }
 
-      // 4. 호실 및 총층수 (현재층수에 예를 들어 3층이라면 '3'만 반영)
+      // 4. 호실 및 총층수 (현재층수: 3층 -> '3', 지하1층 -> '-1')
       if (roomNumberInput) {
         let rVal = String(data.roomNumber || data.floor || '').trim();
         if (/^지하\s*(\d+)층?$/i.test(rVal)) {
-          rVal = 'B' + rVal.match(/^지하\s*(\d+)층?$/i)[1];
+          rVal = '-' + rVal.match(/^지하\s*(\d+)층?$/i)[1];
+        } else if (/^b(\d+)$/i.test(rVal)) {
+          rVal = '-' + rVal.match(/^b(\d+)$/i)[1];
         } else {
           rVal = rVal.replace(/층$/, '').trim();
         }
