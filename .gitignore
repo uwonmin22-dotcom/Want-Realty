@@ -1,3 +1,6 @@
+*.zip
+*.exe
+원트_회의테이블_서버/cloudflared.exe
 __pycache__/
 *.pyc
 .env
