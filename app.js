@@ -1233,27 +1233,25 @@ function doPost(e) {
         if (btnRoomDown) btnRoomDown.disabled = false;
       }
 
-      // 11. 인근 지하철역
+      // 11. 인근 지하철역 (칩버튼 명칭으로 간략화: 예 '서초역')
       if (subwayStationInput && data.subway) {
-        subwayStationInput.value = data.subway;
+        let matchedStation = '';
         if (subwayChips) {
           subwayChips.querySelectorAll('.chip-mini').forEach(chip => {
-            if (data.subway.includes(chip.dataset.subway)) {
+            chip.classList.remove('active');
+            const stationName = chip.dataset.subway;
+            if (data.subway.includes(stationName) && !matchedStation) {
+              matchedStation = stationName;
               chip.classList.add('active');
             }
           });
         }
+        subwayStationInput.value = matchedStation || data.subway;
       }
 
-      // 12. 부동산(중개사) 연락처는 입력란에서 제외 요청에 따라 채우지 않음 (공란 유지)
+      // 12. 부동산(중개사) 연락처는 사용자 요청에 따라 채우지 않음 (공란 유지)
 
-      // 13. 비고 / 특이사항 메모
-      if (data.memo) {
-        const memoInput = document.getElementById('memo');
-        if (memoInput) {
-          memoInput.value = data.memo;
-        }
-      }
+      // 13. 비고 / 비공개 메모는 사용자 요청에 따라 불러오지 않고 공란 상태 유지
 
       // 전체 자동 계산 및 프리뷰 일괄 갱신
       updateCalculations();

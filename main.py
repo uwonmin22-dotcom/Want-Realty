@@ -36,6 +36,30 @@ DEFAULT_COOKIE_STR = (
 
 DEFAULT_ATTEST = "YGYpPCLsTyvgMT99PZpsUEukxFIakb4LLVnN-iWwfTJsoB--AnfHyGrbbTksFodM73zXQ8CNeweXtpyKjun3XgVKqXrmIAoToYOKU6-hdGH6sgstAVbaCw"
 
+ALL_SUBWAY_STATIONS = [
+    '강남역', '교대역', '서초역', '방배역', '양재역', '양재시민의숲역',
+    '남부터미널역', '고속터미널역', '잠원역', '반포역', '신반포역', '사평역',
+    '내방역', '이수역', '신논현역', '논현역', '신사역', '압구정역', '압구정로데오역',
+    '청담역', '강남구청역', '학동역', '언주역', '역삼역', '선릉역',
+    '삼성역', '봉은사역', '삼성중앙역', '선정릉역', '한티역', '도곡역',
+    '대치역', '학여울역', '대청역', '일원역', '수서역', '매봉역', '개포동역', '구룡역'
+]
+
+DONG_CODE_MAP = {
+    "1165010800": ("서초구", "서초동"),
+    "1165010700": ("서초구", "반포동"),
+    "1165010600": ("서초구", "잠원동"),
+    "1165010200": ("서초구", "양재동"),
+    "1165010100": ("서초구", "방배동"),
+    "1168010100": ("강남구", "역삼동"),
+    "1168010400": ("강남구", "논현동"),
+    "1168010700": ("강남구", "신사동"),
+    "1168010500": ("강남구", "삼성동"),
+    "1168010600": ("강남구", "대치동"),
+    "1168011800": ("강남구", "도곡동"),
+    "1168010300": ("강남구", "개포동")
+}
+
 class NaverRealEstateFetcher:
     def __init__(self):
         self.cookie_str = DEFAULT_COOKIE_STR
@@ -58,14 +82,14 @@ class NaverRealEstateFetcher:
         self.client = httpx.Client(
             headers=self.headers,
             follow_redirects=True,
-            timeout=20.0
+            timeout=15.0
         )
 
     def refresh_cookies(self):
         """쿠키 세션 갱신 시도"""
         logger.info("Attempting to refresh session cookies...")
         try:
-            r = self.client.get("https://fin.land.naver.com/map", timeout=10.0)
+            r = self.client.get("https://fin.land.naver.com/map", timeout=8.0)
             if r.cookies:
                 for k, v in r.cookies.items():
                     if k in ["PROP_TEST_KEY", "PROP_TEST_ID", "NNB", "ASID"]:
@@ -73,8 +97,25 @@ class NaverRealEstateFetcher:
         except Exception as e:
             logger.warning(f"Cookie refresh warning: {e}")
 
-    def search_jibun_address(self, query: str) -> Dict[str, str]:
-        """네이버 지도 검색을 통해 지번(본번-부번) 추출"""
+    def fetch_pnu_and_codes(self, article_id: str) -> Dict[str, str]:
+        """네이버 내부 API에서 19자리 PNU(필지고유번호) 및 법정동코드 조회"""
+        url = "https://fin.land.naver.com/front-api/v1/article/key"
+        try:
+            r = self.client.get(url, params={"articleNumber": article_id}, timeout=6.0)
+            if r.status_code == 200:
+                kdata = r.json().get("result", {})
+                pnu = kdata.get("key", {}).get("pnu", "") or ""
+                legal_div = kdata.get("address", {}).get("legalDivisionNumber", "") or ""
+                return {"pnu": pnu, "legalDivisionNumber": legal_div}
+        except Exception as e:
+            logger.warning(f"PNU lookup error for {article_id}: {e}")
+        return {}
+
+    def search_building_and_jibun(self, dong: str, bonbun: str, bubun: str = "") -> Dict[str, str]:
+        """지번(동, 본번-부번)으로 네이버 지도/건축물대장 공공DB 검색하여 정확한 건물명 추출"""
+        if not bonbun:
+            return {}
+        query = f"{dong} {bonbun}" + (f"-{bubun}" if bubun else "")
         url = "https://svc-api.map.naver.com/v1/all-search"
         map_headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -84,37 +125,71 @@ class NaverRealEstateFetcher:
             r = httpx.get(url, params={"query": query}, headers=map_headers, timeout=5.0)
             if r.status_code == 200:
                 data = r.json()
-                place_list = data.get("result", {}).get("place", {}).get("list", [])
-                if place_list:
-                    item = place_list[0]
-                    raw_addr = item.get("address", "")
-                    road_addr = item.get("roadAddress", "")
-                    bonbun = ""
-                    bubun = ""
-                    m = re.search(r'([가-힣]+동)\s*(\d+)(?:-(\d+))?', raw_addr)
-                    if m:
-                        bonbun = m.group(2)
-                        bubun = m.group(3) or ""
+                addr_list = data.get("result", {}).get("address", {}).get("jibunsAddress", {}).get("list", [])
+                if addr_list:
+                    item = addr_list[0]
+                    build_name = item.get("addressElements", {}).get("buildName") or item.get("buildName", "")
+                    site_rep = item.get("siteRepName", "")
+                    mapped_info = item.get("mappedAddress", {}) or {}
+                    mapped_name = mapped_info.get("name", "")
+
+                    resolved_building = ""
+                    # 1순위: 공공 건축물대장상 공식 건물명 (buildName)
+                    if build_name and build_name not in ["사무실", "중소형사무실", "일반상가", "상가", "단독주택"]:
+                        resolved_building = build_name
+                    # 2순위: 대표 건물명(siteRepName) 중 상호명/병원 제외한 빌딩명
+                    elif site_rep and not any(x in site_rep for x in ["의원", "치과", "약국", "헤어", "스타벅스", "공인중개사", "카페"]):
+                        resolved_building = site_rep
+                    # 3순위: 맵핑 주소 내 건물명
+                    elif mapped_name:
+                        m_bld = re.search(r'\((?:[가-힣]+동\s*[\d-]+)?([^\)]+)\)', mapped_name)
+                        if m_bld:
+                            resolved_building = m_bld.group(1).strip()
+
                     return {
-                        "fullAddress": raw_addr,
-                        "roadAddress": road_addr,
-                        "bonbun": bonbun,
-                        "bubun": bubun
+                        "buildingName": resolved_building,
+                        "fullAddress": item.get("fullAddress", ""),
+                        "roadAddress": item.get("englishAddress", "")
                     }
         except Exception as e:
-            logger.error(f"Error searching jibun address for {query}: {e}")
+            logger.warning(f"Building search error for {query}: {e}")
         return {}
 
     def fetch_from_naver(self, article_id: str) -> Dict[str, Any]:
-        """네이버 부동산에서 실시간 매물 조회"""
-        if article_id in ARTICLE_CACHE:
-            logger.info(f"Returning cached article data for {article_id}")
-            return ARTICLE_CACHE[article_id]
+        """네이버 부동산에서 실시간 매물 조회 및 건축물대장 건물명/지번 자동 연계"""
+        # 1. PNU(필지고유번호) 기반 정밀 지번(본번-부번) 및 법정동 추출
+        pnu_info = self.fetch_pnu_and_codes(article_id)
+        pnu = pnu_info.get("pnu", "")
+        legal_div = pnu_info.get("legalDivisionNumber", "")
 
+        bonbun = ""
+        bubun = ""
+        gu_name = "서초구"
+        dong_name = "서초동"
+
+        if pnu and len(pnu) == 19:
+            bcode = pnu[0:10]
+            bonbun = str(int(pnu[11:15]))
+            bubun_int = int(pnu[15:19])
+            bubun = str(bubun_int) if bubun_int > 0 else ""
+
+            if bcode in DONG_CODE_MAP:
+                gu_name, dong_name = DONG_CODE_MAP[bcode]
+            elif bcode.startswith("11650"):
+                gu_name = "서초구"
+            elif bcode.startswith("11680"):
+                gu_name = "강남구"
+        elif legal_div:
+            if legal_div in DONG_CODE_MAP:
+                gu_name, dong_name = DONG_CODE_MAP[legal_div]
+
+        # 2. 건물명: 건축물대장 DB 및 네이버 지도 주소 체계에서 정밀 추출 ("중소형사무실" 배제)
+        building_info = self.search_building_and_jibun(dong_name, bonbun, bubun)
+        resolved_building = building_info.get("buildingName", "")
+
+        # 3. 매물 상세 페이지 및 RSC 스트림 조회
         url = f"https://fin.land.naver.com/articles/{article_id}"
         html = ""
-        
-        # 2회 재시도 (실패 시 쿠키 갱신)
         for attempt in range(2):
             try:
                 resp = self.client.get(url)
@@ -122,22 +197,21 @@ class NaverRealEstateFetcher:
                     html = resp.text
                     break
                 else:
-                    logger.warning(f"Status {resp.status_code} on attempt {attempt+1}, refreshing...")
                     self.refresh_cookies()
             except Exception as e:
-                logger.warning(f"Fetch error on attempt {attempt+1}: {e}")
+                logger.warning(f"Fetch error attempt {attempt+1}: {e}")
                 self.refresh_cookies()
 
         if not html:
-            raise HTTPException(status_code=500, detail="네이버 매물 페이지에 연결할 수 없습니다 (차단 또는 타임아웃).")
+            raise HTTPException(status_code=500, detail="네이버 매물 페이지에 연결할 수 없습니다.")
 
-        # RSC 스트림 추출 (self.__next_f.push)
+        # RSC 스트림 추출
         chunks = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.DOTALL)
         stream = "".join(chunks).replace('\\"', '"').replace('\\\\', '\\').replace('\\n', '\n')
         if not stream:
             stream = html
 
-        # priceInfo 블록 탐색
+        # priceInfo 블록 파싱
         pos = stream.find('{"priceInfo":')
         if pos == -1:
             pos = stream.find('"priceInfo":')
@@ -175,50 +249,63 @@ class NaverRealEstateFetcher:
         deposit_man = int(raw_deposit // 10000) if raw_deposit else 0
         rent_man = int(raw_rent // 10000) if raw_rent else 0
 
-        # 만약 priceInfo가 비어있다면 meta description에서 파싱 (예: "월세 1억/700")
+        # 보증금/월세 fallback
         if not deposit_man and not rent_man:
             desc_m = re.search(r'content="(?:월세|전세|매매)?\s*([0-9,]+억)?\s*([0-9,]+만)?/([0-9,]+)"', html)
-            if not desc_m:
-                desc_m = re.search(r'content="월세\s*([0-9,]+억)?\s*([0-9,]+)?/([0-9,]+)"', html)
             if desc_m:
-                billion_str = desc_m.group(1) or ""
-                million_str = desc_m.group(2) or ""
-                rent_str = desc_m.group(3) or ""
+                b_str = desc_m.group(1) or ""
+                m_str = desc_m.group(2) or ""
+                r_str = desc_m.group(3) or ""
                 dep_calc = 0
-                if "억" in billion_str:
-                    b_num = int(re.sub(r'[^0-9]', '', billion_str) or 1)
-                    dep_calc += b_num * 10000
-                if million_str:
-                    m_num = int(re.sub(r'[^0-9]', '', million_str) or 0)
-                    dep_calc += m_num
+                if "억" in b_str:
+                    dep_calc += int(re.sub(r'[^0-9]', '', b_str) or 1) * 10000
+                if m_str:
+                    dep_calc += int(re.sub(r'[^0-9]', '', m_str) or 0)
                 deposit_man = dep_calc
-                if rent_str:
-                    rent_man = int(re.sub(r'[^0-9]', '', rent_str) or 0)
+                if r_str:
+                    rent_man = int(re.sub(r'[^0-9]', '', r_str) or 0)
 
-        # 본문 설명
         desc = article_detail.get("articleDescription", "")
         feature = article_detail.get("articleFeatureDescription", "")
 
-        # 관리비
+        # ★ 관리비: 누락 없이 전체 소스에서 추출
         maintenance_man = 0
-        m_match = re.search(r'관리비\s*[:：]?\s*(?:월\s*)?([0-9,]+)\s*만', desc)
-        if m_match:
+        raw_fee = price_info.get("managementFeeAmount") or price_info.get("monthlyManagementCost") or price_info.get("managementCost")
+        if raw_fee:
             try:
-                maintenance_man = int(m_match.group(1).replace(',', ''))
+                fee_val = int(raw_fee)
+                maintenance_man = (fee_val // 10000) if fee_val >= 10000 else fee_val
             except:
                 pass
 
-        # 건물명
-        raw_bld = article_detail.get("nonComplexBuildingName") or article_detail.get("articleName", "")
-        bld_match = re.search(r'건물명\s*[:：]\s*([^\n\r]+)', desc)
-        if bld_match:
-            building_name = bld_match.group(1).strip()
-        elif raw_bld:
-            parts = [p.strip() for p in raw_bld.split("I") if p.strip()]
-            building_name = parts[0] if parts else raw_bld
-        else:
-            og_t = re.search(r'property="og:title" content="(.*?)"', html)
-            building_name = og_t.group(1).strip() if og_t else "사무실"
+        if not maintenance_man:
+            fee_patterns = [
+                r'(?:월\s*)?관리비\s*[:：]?\s*(?:월\s*)?([0-9,]+(?:\.[0-9]+)?)\s*(?:만|원)?',
+                r'공용\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
+                r'월\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
+                r'관\s*[:：]\s*([0-9,]+)\s*만',
+                r'([0-9,]+)\s*만\s*원?\s*\/\s*관리비'
+            ]
+            for pat in fee_patterns:
+                f_match = re.search(pat, desc + " " + feature + " " + html)
+                if f_match:
+                    try:
+                        clean_num = f_match.group(1).replace(',', '')
+                        val = int(float(clean_num))
+                        if val > 0 and val < 5000:
+                            maintenance_man = val
+                            break
+                    except:
+                        pass
+
+        # 건물명 결정: "중소형사무실", "사무실" 등 generic 명칭 원천 배제
+        final_building = resolved_building
+        if not final_building or final_building in ["사무실", "중소형사무실", "일반상가", "상가"]:
+            raw_bld = article_detail.get("nonComplexBuildingName") or article_detail.get("articleName", "")
+            if raw_bld and raw_bld not in ["사무실", "중소형사무실", "일반상가", "상가"]:
+                final_building = raw_bld
+            else:
+                final_building = f"{dong_name} {bonbun}" + (f"-{bubun}" if bubun else "") + "번지"
 
         # 층수
         target_floor = str(floor_info.get("targetFloor", ""))
@@ -265,66 +352,15 @@ class NaverRealEstateFetcher:
             except:
                 pass
 
-        # 지하철역
-        subway_text = ""
-        sub_match = re.search(r'([가-힣0-9]+역[^\n\r,.]*(?:도보\s*\d+\s*분)?)', desc)
-        if sub_match:
-            subway_text = sub_match.group(1).strip()
+        # ★ 지하철역: 칩버튼 단독 명칭으로 간략화 (예: '서초역')
+        simplified_subway = ""
+        for st in ALL_SUBWAY_STATIONS:
+            if st in desc or st in feature or st in html:
+                simplified_subway = st
+                break
 
-        # 법정동 판별
-        legal_match = re.search(r'"legalDivisionNumber":"(\d+)"', stream)
-        legal_division = legal_match.group(1) if legal_match else ""
-        gu_name = "서초구"
-        dong_name = "서초동"
-        if legal_division.startswith("11650"):
-            gu_name = "서초구"
-            dong_map = {
-                "1165010800": "서초동",
-                "1165010700": "반포동",
-                "1165010600": "잠원동",
-                "1165010200": "양재동",
-                "1165010100": "방배동",
-            }
-            dong_name = dong_map.get(legal_division, "서초동")
-        elif legal_division.startswith("11680"):
-            gu_name = "강남구"
-            dong_map = {
-                "1168010100": "역삼동",
-                "1168010400": "논현동",
-                "1168010700": "신사동",
-                "1168010500": "삼성동",
-                "1168010600": "대치동",
-                "1168011800": "도곡동",
-                "1168010300": "개포동"
-            }
-            dong_name = dong_map.get(legal_division, "역삼동")
-        else:
-            for d in ["서초동", "반포동", "잠원동", "양재동", "방배동"]:
-                if d in html:
-                    gu_name = "서초구"
-                    dong_name = d
-                    break
-            for d in ["논현동", "역삼동", "신사동", "삼성동", "대치동", "도곡동", "개포동"]:
-                if d in html:
-                    gu_name = "강남구"
-                    dong_name = d
-                    break
-
-        # 지번 자동 검색
-        bonbun = ""
-        bubun = ""
-        if building_name and building_name not in ["사무실", "중소형사무실"]:
-            jibun_info = self.search_jibun_address(f"{dong_name} {building_name}")
-            bonbun = jibun_info.get("bonbun", "")
-            bubun = jibun_info.get("bubun", "")
-
-        # 비고
-        memo_lines = []
-        if feature:
-            memo_lines.append(f"[특징] {feature}")
-        if desc:
-            memo_lines.append(desc.strip())
-        full_memo = "\n\n".join(memo_lines)
+        # ★ 비고/비공개 메모는 사용자 요청에 따라 공란 유지 ("")
+        memo_text = ""
 
         result = {
             "success": True,
@@ -333,7 +369,7 @@ class NaverRealEstateFetcher:
             "dong": dong_name,
             "bonbun": bonbun,
             "bubun": bubun,
-            "buildingName": building_name,
+            "buildingName": final_building,
             "roomNumber": "",
             "floor": target_floor,
             "totalFloor": total_floor,
@@ -348,9 +384,9 @@ class NaverRealEstateFetcher:
             "parkingCars": parking_cars,
             "toiletType": toilet_type,
             "roomCount": room_count,
-            "subway": subway_text,
+            "subway": simplified_subway,
             "realtorContact": "",
-            "memo": full_memo
+            "memo": memo_text
         }
 
         ARTICLE_CACHE[article_id] = result
