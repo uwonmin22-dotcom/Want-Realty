@@ -368,14 +368,38 @@ class NaverRealEstateFetcher:
         if "외부 화장실" in desc or "외부" in desc:
             toilet_type = "외부구분"
 
-        # 룸 개수
+        # 내부구조 자동 감지 (홀, 룸 개수, 테라스, 루프탑, 수도시설, 파티션)
+        full_desc = desc + " " + feature + " " + html
+        has_hall = bool(re.search(r'홀\b|홀\s*[+]|홀\s*및|홀\s*과|홀\s*1|업무홀|중앙홀|메인홀|홀형태|홀구조', full_desc))
+        has_terrace = bool(re.search(r'테라스|단독테라스|야외테라스', full_desc))
+        has_rooftop = bool(re.search(r'루프탑|옥상단독|옥상정원|옥상테라스', full_desc))
+        has_water = bool(re.search(r'수도시설|수도\b|싱크대|탕비실|상하수도|급배수', full_desc))
+        has_partition = bool(re.search(r'파티션|칸막이', full_desc))
+
+        # 룸 개수 정밀 추출 (예: '룸 3개', '룸3', '3룸', '방 2개', '회의실 1개')
         room_count = 0
-        r_match = re.search(r'룸\s*([0-9]+)\s*개', desc + " " + feature)
+        r_match = (
+            re.search(r'룸\s*[:：]?\s*([0-9]+)\s*개?', full_desc) or
+            re.search(r'([0-9]+)\s*룸', full_desc) or
+            re.search(r'방\s*[:：]?\s*([0-9]+)\s*개?', full_desc)
+        )
         if r_match:
             try:
                 room_count = int(r_match.group(1))
             except:
                 pass
+
+        if room_count == 0:
+            rooms_found = re.findall(r'(?:회의실|대표실|임원실|미팅룸)\s*([0-9]+)\s*개?', full_desc)
+            if rooms_found:
+                try:
+                    room_count = sum(int(x) for x in rooms_found)
+                except:
+                    pass
+
+        has_room = room_count > 0 or bool(re.search(r'룸\b|개별\s*룸|회의실|미팅룸|대표실', full_desc))
+        if has_room and room_count == 0:
+            room_count = 1
 
         # ★ 지하철역: 칩버튼 단독 명칭으로 간략화 (예: '서초역')
         simplified_subway = ""
@@ -419,6 +443,12 @@ class NaverRealEstateFetcher:
             "parkingCars": parking_cars,
             "toiletType": toilet_type,
             "roomCount": room_count,
+            "hasRoom": has_room,
+            "hasHall": has_hall,
+            "hasTerrace": has_terrace,
+            "hasRooftop": has_rooftop,
+            "hasWater": has_water,
+            "hasPartition": has_partition,
             "subway": simplified_subway,
             "realtorContact": "",
             "memo": memo_text

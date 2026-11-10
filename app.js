@@ -1228,18 +1228,35 @@ function doPost(e) {
         parkingNotAllowed.checked = false;
       }
 
-      // 10. 룸 구조 (룸 개수)
-      if (data.roomCount && data.roomCount > 0) {
-        if (structRoom) {
-          structRoom.checked = true;
-          if (roomInputBox) roomInputBox.classList.add('active');
+      // 10. 내부구조 (홀, 룸, 테라스, 루프탑, 수도시설, 파티션 자동 체크)
+      if (structHall) {
+        structHall.checked = !!data.hasHall;
+      }
+      if (structTerrace) {
+        structTerrace.checked = !!data.hasTerrace;
+      }
+      if (structRooftop) {
+        structRooftop.checked = !!data.hasRooftop;
+      }
+      if (structVeranda) {
+        structVeranda.checked = !!data.hasWater;
+      }
+      if (structPartition) {
+        structPartition.checked = !!data.hasPartition;
+      }
+      if (structRoom) {
+        const hasR = !!data.hasRoom || (data.roomCount && data.roomCount > 0);
+        structRoom.checked = hasR;
+        if (roomInputBox) {
+          if (hasR) roomInputBox.classList.add('active');
+          else roomInputBox.classList.remove('active');
         }
         if (roomCount) {
-          roomCount.disabled = false;
-          roomCount.value = data.roomCount;
+          roomCount.disabled = !hasR;
+          roomCount.value = hasR ? (data.roomCount || 1) : '';
         }
-        if (btnRoomUp) btnRoomUp.disabled = false;
-        if (btnRoomDown) btnRoomDown.disabled = false;
+        if (btnRoomUp) btnRoomUp.disabled = !hasR;
+        if (btnRoomDown) btnRoomDown.disabled = !hasR;
       }
 
       // 11. 인근 지하철역 (칩버튼 명칭으로 간략화: 예 '서초역')
