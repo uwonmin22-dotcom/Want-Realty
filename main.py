@@ -325,16 +325,22 @@ class NaverRealEstateFetcher:
                 target_floor = fl_match.group(1)
                 total_floor = fl_match.group(2)
 
-        # ★ 호실: 사용자가 직접 수정하기 편하도록 노출 중인 층수(예: '3층', '지하1층')를 자동 채움
+        # ★ 호실: 사용자가 직접 수정하기 편하도록 노출 중인 현재 층수(예: '3층' -> '3', 지하1층 -> 'B1')를 숫자/기호만 반영
         room_text = ""
         if target_floor and target_floor != "-":
             tf_str = str(target_floor).strip()
             if tf_str.startswith("-") or tf_str.upper().startswith("B") or "지하" in tf_str:
                 num = re.sub(r'[^0-9]', '', tf_str) or "1"
-                room_text = f"지하{num}층"
+                room_text = f"B{num}"
             else:
                 num = re.sub(r'[^0-9]', '', tf_str)
-                room_text = f"{num}층" if num else f"{tf_str}층"
+                room_text = num if num else tf_str.replace("층", "").strip()
+
+        # 총층수도 '층' 없이 순수 숫자 (예: '4층' -> '4')
+        clean_total_floor = ""
+        if total_floor and total_floor != "-":
+            c_num = re.sub(r'[^0-9]', '', str(total_floor).strip())
+            clean_total_floor = c_num if c_num else str(total_floor).replace("층", "").strip()
 
         # 면적
         exclusive_m2 = size_info.get("exclusiveSpace", 0)
@@ -382,14 +388,13 @@ class NaverRealEstateFetcher:
         # ★ 비고/비공개 메모는 사용자 요청에 따라 공란 유지 ("")
         memo_text = ""
 
-        # 층수/총층 문자열 구성
-        total_fl_text = f"{total_floor}층" if (total_floor and total_floor != "-") else ""
-        if room_text and total_fl_text:
-            rf_display = f"{room_text}/{total_fl_text}"
+        # 층수/총층 문자열 구성 (예: '3/4' 또는 'B1/4')
+        if room_text and clean_total_floor:
+            rf_display = f"{room_text}/{clean_total_floor}"
         elif room_text:
             rf_display = room_text
-        elif total_fl_text:
-            rf_display = total_fl_text
+        elif clean_total_floor:
+            rf_display = clean_total_floor
         else:
             rf_display = ""
 
@@ -402,8 +407,8 @@ class NaverRealEstateFetcher:
             "bubun": bubun,
             "buildingName": final_building,
             "roomNumber": room_text,
-            "floor": target_floor,
-            "totalFloor": total_floor,
+            "floor": room_text or target_floor,
+            "totalFloor": clean_total_floor or total_floor,
             "roomAndFloor": rf_display,
             "exclusiveArea": exclusive_pyeong,
             "contractArea": contract_pyeong,

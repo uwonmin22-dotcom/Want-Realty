@@ -1162,12 +1162,19 @@ function doPost(e) {
         buildingName.value = data.buildingName || '';
       }
 
-      // 4. 호실 및 총층수 (호실은 사용자가 수정하기 편하도록 노출 층수 기본 세팅)
+      // 4. 호실 및 총층수 (현재층수에 예를 들어 3층이라면 '3'만 반영)
       if (roomNumberInput) {
-        roomNumberInput.value = data.roomNumber || (data.floor ? (String(data.floor).includes('층') ? data.floor : `${data.floor}층`) : '');
+        let rVal = String(data.roomNumber || data.floor || '').trim();
+        if (/^지하\s*(\d+)층?$/i.test(rVal)) {
+          rVal = 'B' + rVal.match(/^지하\s*(\d+)층?$/i)[1];
+        } else {
+          rVal = rVal.replace(/층$/, '').trim();
+        }
+        roomNumberInput.value = rVal;
       }
       if (totalFloorInput) {
-        totalFloorInput.value = data.totalFloor ? (String(data.totalFloor).includes('층') ? data.totalFloor : `${data.totalFloor}층`) : '';
+        let tVal = String(data.totalFloor || '').trim().replace(/층$/, '').trim();
+        totalFloorInput.value = tVal;
       }
       updateRoomAndFloor();
 
