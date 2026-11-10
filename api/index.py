@@ -293,19 +293,24 @@ class NaverRealEstateFetcher:
 
         if not maintenance_man:
             fee_patterns = [
-                r'(?:월\s*)?관리비\s*[:：]?\s*(?:월\s*)?([0-9,]+(?:\.[0-9]+)?)\s*(?:만|원)?',
-                r'공용\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
-                r'월\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
+                r'(?:월\s*)?관리비\s*[:：=\s]+([0-9,]+(?:\.[0-9]+)?)\s*만\s*원?',
+                r'공용\s*관리비\s*[:：=\s]+([0-9,]+)\s*만',
+                r'월\s*관리비\s*[:：=\s]+([0-9,]+)\s*만',
                 r'관\s*[:：]\s*([0-9,]+)\s*만',
-                r'([0-9,]+)\s*만\s*원?\s*\/\s*관리비'
+                r'\/\s*관\s*[:：]?\s*([0-9,]+)\s*(?:만|원)?',
             ]
             for pat in fee_patterns:
-                f_match = re.search(pat, desc + " " + feature + " " + html)
+                f_match = re.search(pat, desc + " " + feature)
                 if f_match:
                     try:
                         clean_num = f_match.group(1).replace(',', '')
                         val = int(float(clean_num))
-                        if val > 0 and val < 5000:
+                        if 0 < val < 5000:
+                            # 월세 금액이 관리비로 잘못 매칭되는 오류 방지 (예: '월세 700만원 / 관리비')
+                            if val == rent_man:
+                                full_m = f_match.group(0)
+                                if any(w in full_m for w in ["월세", "임대", "보증금"]):
+                                    continue
                             maintenance_man = val
                             break
                     except:

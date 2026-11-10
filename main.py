@@ -296,8 +296,7 @@ class NaverRealEstateFetcher:
                 r'(?:월\s*)?관리비\s*[:：]?\s*(?:월\s*)?([0-9,]+(?:\.[0-9]+)?)\s*(?:만|원)?',
                 r'공용\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
                 r'월\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
-                r'관\s*[:：]\s*([0-9,]+)\s*만',
-                r'([0-9,]+)\s*만\s*원?\s*\/\s*관리비'
+                r'관\s*[:：]\s*([0-9,]+)\s*만'
             ]
             for pat in fee_patterns:
                 f_match = re.search(pat, desc + " " + feature + " " + html)
@@ -305,7 +304,7 @@ class NaverRealEstateFetcher:
                     try:
                         clean_num = f_match.group(1).replace(',', '')
                         val = int(float(clean_num))
-                        if val > 0 and val < 5000:
+                        if val > 0 and val < 5000 and val != rent_man:
                             maintenance_man = val
                             break
                     except:

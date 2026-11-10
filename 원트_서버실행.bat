@@ -1,28 +1,9 @@
 @echo off
 cd /d "%~dp0"
-chcp 65001 > nul
-title [원트부동산] 네이버 매물 연동 중계 서버
-cls
-
+title WANT Realty Naver Proxy Server (Port 8888)
 echo ==========================================================
-echo   [원트부동산] 네이버 매물 연동 중계 서버 실행 중...
+echo [WANT Realty] Naver Real Estate Proxy Server Starting...
+echo Port: 8888
 echo ==========================================================
-echo.
-
-echo [1/3] 필수 라이브러리 확인 중...
-python -m pip install -r requirements.txt
-
-echo.
-echo [2/3] 네이버 매물 중계 엔진 시작 중...
-start /b python server.py
-
-echo.
-echo [3/3] 외부 스마트폰 보안 통로 연결 중...
-echo.
-echo ==========================================================
-echo   ★ 서버가 정상 작동 중입니다!
-echo   이 창을 닫지 마시고 '최소화'해두시면 됩니다.
-echo ==========================================================
-echo.
-cloudflared.exe tunnel --url http://127.0.0.1:8888
+python server.py
 pause

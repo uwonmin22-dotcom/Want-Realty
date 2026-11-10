@@ -2,4 +2,5 @@ Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 WshShell.CurrentDirectory = scriptDir
-WshShell.Run "cmd /c ì›íŠ¸_ì„œë²„ì‹¤í–‰.bat", 0, False
+WshShell.Run "python server.py", 0, False
+WshShell.Popup "¿øÆ®ºÎµ¿»ê ³×ÀÌ¹ö ¿¬µ¿ ¼­¹ö°¡ ¹é±×¶ó¿îµå¿¡¼­ Á¤»ó ½ÇÇàµÇ¾ú½À´Ï´Ù." & vbCrLf & vbCrLf & "ÀÌ Ã¢Àº 5ÃÊ ÈÄ ÀÚµ¿À¸·Î ´İÈ÷¸ç ¹é±×¶ó¿îµå¿¡¼­ °è¼Ó À¯ÁöµË´Ï´Ù.", 5, "¿øÆ®ºÎµ¿»ê ¼­¹ö", 64

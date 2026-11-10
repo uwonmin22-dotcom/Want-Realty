@@ -293,19 +293,24 @@ class NaverRealEstateFetcher:
 
         if not maintenance_man:
             fee_patterns = [
-                r'(?:월\s*)?관리비\s*[:：]?\s*(?:월\s*)?([0-9,]+(?:\.[0-9]+)?)\s*(?:만|원)?',
-                r'공용\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
-                r'월\s*관리비\s*[:：]?\s*([0-9,]+)\s*만',
+                r'(?:월\s*)?관리비\s*[:：=\s]+([0-9,]+(?:\.[0-9]+)?)\s*만\s*원?',
+                r'공용\s*관리비\s*[:：=\s]+([0-9,]+)\s*만',
+                r'월\s*관리비\s*[:：=\s]+([0-9,]+)\s*만',
                 r'관\s*[:：]\s*([0-9,]+)\s*만',
-                r'([0-9,]+)\s*만\s*원?\s*\/\s*관리비'
+                r'\/\s*관\s*[:：]?\s*([0-9,]+)\s*(?:만|원)?',
             ]
             for pat in fee_patterns:
-                f_match = re.search(pat, desc + " " + feature + " " + html)
+                f_match = re.search(pat, desc + " " + feature)
                 if f_match:
                     try:
                         clean_num = f_match.group(1).replace(',', '')
                         val = int(float(clean_num))
-                        if val > 0 and val < 5000:
+                        if 0 < val < 5000:
+                            # 월세 금액이 관리비로 잘못 매칭되는 오류 방지 (예: '월세 700만원 / 관리비')
+                            if val == rent_man:
+                                full_m = f_match.group(0)
+                                if any(w in full_m for w in ["월세", "임대", "보증금"]):
+                                    continue
                             maintenance_man = val
                             break
                     except:
@@ -445,7 +450,27 @@ def handle_all_requests(request: Request, full_path: str = "", articleId: Option
         return {"status": "ok"}
     return {"message": "Naver Real Estate Proxy API is running", "path": full_path, "status": "online"}
 
+import subprocess
+import threading
+import shutil
+import time
+
+def start_tunnel_thread():
+    time.sleep(1.5)
+    cloudflared_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudflared.exe")
+    if not os.path.exists(cloudflared_path):
+        cloudflared_path = shutil.which("cloudflared") or "cloudflared.exe"
+    
+    if os.path.exists(cloudflared_path) or shutil.which("cloudflared"):
+        logger.info(f"Starting Cloudflare tunnel using {cloudflared_path} on port 8888...")
+        try:
+            subprocess.Popen([cloudflared_path, "tunnel", "--url", "http://127.0.0.1:8888"])
+        except Exception as e:
+            logger.error(f"Error starting cloudflared tunnel: {e}")
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8888))
+    # cloudflared 터널 자동 실행
+    threading.Thread(target=start_tunnel_thread, daemon=True).start()
     print(f"Starting server on port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)
