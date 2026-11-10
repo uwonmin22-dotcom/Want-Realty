@@ -72,6 +72,49 @@
     <!-- Main Form -->
     <form id="listingForm" class="listing-form" autocomplete="off" novalidate>
 
+      <!-- Section 0: 네이버부동산 매물 자동입력 카드 -->
+      <section class="form-card naver-card" id="naverImportSection">
+        <div class="card-header naver-header">
+          <div class="naver-badge-title">
+            <span class="naver-n-icon">N</span>
+            <h2>네이버부동산 매물 자동입력</h2>
+          </div>
+          <button type="button" id="btnToggleNaverApiConfig" class="naver-config-btn" title="API 서버 주소 설정">
+            ⚙️ 서버설정
+          </button>
+        </div>
+        <div class="card-body">
+          <!-- API 서버 주소 변경 미니 패널 (기본 숨김) -->
+          <div id="naverApiConfigBox" class="naver-api-config-box" style="display: none;">
+            <div class="config-inner">
+              <label for="naverApiUrlInput" class="config-label">우회 API 서버 URL:</label>
+              <div class="config-row">
+                <input type="text" id="naverApiUrlInput" placeholder="예: https://your-app.onrender.com 또는 http://localhost:8000">
+                <button type="button" id="btnSaveNaverApiUrl" class="btn-save-mini">저장</button>
+              </div>
+              <span class="config-desc">* 로컬 PC 또는 Render/Railway 무료 배포 서버 주소를 입력하세요.</span>
+            </div>
+          </div>
+
+          <div class="naver-fetch-row">
+            <div class="naver-input-wrapper">
+              <input type="text" id="naverArticleId" placeholder="네이버 매물번호 입력 (예: 2658993641)" inputmode="numeric">
+              <button type="button" id="btnClearNaverInput" class="btn-clear-naver" style="display: none;">✕</button>
+            </div>
+            <button type="button" id="btnFetchNaver" class="btn-naver-fetch">
+              <span class="btn-fetch-icon" id="naverFetchIcon">⚡</span>
+              <span id="naverFetchText">가져오기</span>
+            </button>
+          </div>
+
+          <!-- 상태 알림 메시지 영역 -->
+          <div id="naverStatusBanner" class="naver-status-banner" style="display: none;">
+            <span id="naverStatusIcon">ℹ️</span>
+            <span id="naverStatusText">정보를 불러오는 중입니다...</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Section 1: 기본 정보 & 위치 -->
       <section class="form-card">
         <div class="card-header">

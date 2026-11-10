@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
       '신사동': { prefix: 'C', lastNum: 100 },
       '삼성동': { prefix: 'D', lastNum: 108 },
       '대치동': { prefix: 'E', lastNum: 101 },
-      '도곡동': { prefix: 'F', lastNum: 104 }
+      '도곡동': { prefix: 'F', lastNum: 104 },
+      '개포동': { prefix: 'G', lastNum: 100 }
     }
   };
 
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       '강남역', '신논현역', '논현역', '신사역', '압구정역', '압구정로데오역',
       '청담역', '강남구청역', '학동역', '언주역', '역삼역', '선릉역',
       '삼성역', '봉은사역', '삼성중앙역', '선정릉역', '한티역', '도곡역',
-      '대치역', '학여울역', '대청역', '일원역', '수서역', '매봉역'
+      '대치역', '학여울역', '대청역', '일원역', '수서역', '매봉역', '개포동역', '구룡역'
     ]
   };
 
@@ -76,6 +77,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 동일지번 매물추가 모드 상태 변수
   let isSameAddressMode = false;
+
+  // Naver Real Estate Auto Import Elements & Config
+  const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
+  const DEFAULT_NAVER_API_URL = 'http://localhost:8000';
+  let naverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL) || DEFAULT_NAVER_API_URL;
+
+  const naverArticleIdInput = document.getElementById('naverArticleId');
+  const btnFetchNaver = document.getElementById('btnFetchNaver');
+  const btnClearNaverInput = document.getElementById('btnClearNaverInput');
+  const naverFetchIcon = document.getElementById('naverFetchIcon');
+  const naverFetchText = document.getElementById('naverFetchText');
+  const naverStatusBanner = document.getElementById('naverStatusBanner');
+  const naverStatusIcon = document.getElementById('naverStatusIcon');
+  const naverStatusText = document.getElementById('naverStatusText');
+  const btnToggleNaverApiConfig = document.getElementById('btnToggleNaverApiConfig');
+  const naverApiConfigBox = document.getElementById('naverApiConfigBox');
+  const naverApiUrlInput = document.getElementById('naverApiUrlInput');
+  const btnSaveNaverApiUrl = document.getElementById('btnSaveNaverApiUrl');
+
+  if (naverApiUrlInput) {
+    naverApiUrlInput.value = naverApiUrl;
+  }
 
   // DOM Elements - 담당자 (웅, 봄, 유)
   const managerInputs = document.querySelectorAll('input[name="manager"]');
@@ -971,6 +994,255 @@ function doPost(e) {
       btnSyncLiveSheet.addEventListener('click', () => {
         fetchLiveCountersFromSheet(true);
       });
+    }
+
+    // =========================================================================
+    // ⚡ 네이버부동산 매물번호 자동입력 핸들러 & API 연동
+    // =========================================================================
+    function setNaverLoading(isLoading) {
+      if (!btnFetchNaver) return;
+      if (isLoading) {
+        btnFetchNaver.classList.add('loading');
+        btnFetchNaver.disabled = true;
+        if (naverFetchIcon) naverFetchIcon.textContent = '⏳';
+        if (naverFetchText) naverFetchText.textContent = '조회중...';
+      } else {
+        btnFetchNaver.classList.remove('loading');
+        btnFetchNaver.disabled = false;
+        if (naverFetchIcon) naverFetchIcon.textContent = '⚡';
+        if (naverFetchText) naverFetchText.textContent = '가져오기';
+      }
+    }
+
+    function showNaverStatus(type, msg) {
+      if (!naverStatusBanner || !naverStatusText) return;
+      naverStatusBanner.style.display = 'flex';
+      naverStatusBanner.className = `naver-status-banner ${type}`;
+      naverStatusText.textContent = msg;
+      if (naverStatusIcon) {
+        naverStatusIcon.textContent = (type === 'success') ? '✅' : (type === 'error' ? '❌' : 'ℹ️');
+      }
+    }
+
+    // 서버 설정 패널 토글
+    if (btnToggleNaverApiConfig && naverApiConfigBox) {
+      btnToggleNaverApiConfig.addEventListener('click', () => {
+        const isHidden = naverApiConfigBox.style.display === 'none';
+        naverApiConfigBox.style.display = isHidden ? 'block' : 'none';
+      });
+    }
+
+    // 서버 URL 저장
+    if (btnSaveNaverApiUrl && naverApiUrlInput) {
+      btnSaveNaverApiUrl.addEventListener('click', () => {
+        const newUrl = naverApiUrlInput.value.trim();
+        if (newUrl) {
+          naverApiUrl = newUrl;
+          localStorage.setItem(STORAGE_KEY_NAVER_API_URL, naverApiUrl);
+          showToast(`우회 서버 URL이 저장되었습니다: ${naverApiUrl}`);
+          if (naverApiConfigBox) naverApiConfigBox.style.display = 'none';
+        }
+      });
+    }
+
+    // 매물번호 입력창 변경 감지 (삭제 버튼 토글 & 엔터키 제출)
+    if (naverArticleIdInput) {
+      naverArticleIdInput.addEventListener('input', () => {
+        const val = naverArticleIdInput.value.trim();
+        if (btnClearNaverInput) {
+          btnClearNaverInput.style.display = val ? 'flex' : 'none';
+        }
+      });
+
+      naverArticleIdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNaverFetch();
+        }
+      });
+    }
+
+    if (btnClearNaverInput) {
+      btnClearNaverInput.addEventListener('click', () => {
+        if (naverArticleIdInput) {
+          naverArticleIdInput.value = '';
+          naverArticleIdInput.focus();
+        }
+        btnClearNaverInput.style.display = 'none';
+        if (naverStatusBanner) naverStatusBanner.style.display = 'none';
+      });
+    }
+
+    if (btnFetchNaver) {
+      btnFetchNaver.addEventListener('click', handleNaverFetch);
+    }
+
+    async function handleNaverFetch() {
+      const articleId = (naverArticleIdInput?.value || '').trim();
+      if (!articleId) {
+        showNaverStatus('error', '⚠️ 네이버 매물번호를 입력해주세요.');
+        naverArticleIdInput?.focus();
+        return;
+      }
+
+      setNaverLoading(true);
+      showNaverStatus('info', `네이버 매물번호(${articleId}) 데이터를 불러오는 중입니다...`);
+
+      try {
+        const cleanUrl = naverApiUrl.replace(/\/+$/, '');
+        const apiUrl = `${cleanUrl}/api/naver-article?articleId=${encodeURIComponent(articleId)}`;
+
+        const resp = await fetch(apiUrl, { mode: 'cors' });
+        if (!resp.ok) {
+          let errMsg = `조회 실패 (HTTP ${resp.status})`;
+          try {
+            const errJson = await resp.json();
+            if (errJson.detail) errMsg = errJson.detail;
+          } catch(e) {}
+          throw new Error(errMsg);
+        }
+
+        const data = await resp.json();
+        if (!data || !data.success) {
+          throw new Error(data.message || '매물 정보를 가져올 수 없습니다.');
+        }
+
+        // 가져온 데이터를 폼에 자동 입력 (시트 전송 직전 상태)
+        applyNaverData(data);
+
+        const bldName = data.buildingName || articleId;
+        showNaverStatus('success', `✅ [${bldName}] 매물 정보 자동 입력 완료! 확인 후 하단 전송을 누르세요.`);
+        showToast(`⚡ ${bldName} 매물 정보가 성공적으로 채워졌습니다!`);
+      } catch (err) {
+        console.error('Naver fetch error:', err);
+        showNaverStatus('error', `❌ ${err.message}`);
+        showToast(`네이버 조회 오류: ${err.message}`);
+      } finally {
+        setNaverLoading(false);
+      }
+    }
+
+    function applyNaverData(data) {
+      // 1. 구 및 지번동 선택
+      if (data.gu) {
+        selectedGu = data.gu;
+        localStorage.setItem(STORAGE_KEY_LAST_GU, selectedGu);
+      }
+      if (data.dong) {
+        selectedDong = data.dong;
+        localStorage.setItem(STORAGE_KEY_LAST_DONG, selectedDong);
+      }
+      renderGuAndDongUI();
+
+      // 2. 지번 (본번 / 부번) 자동 입력
+      if (bonbunInput && data.bonbun) {
+        bonbunInput.value = data.bonbun;
+      }
+      if (bubunInput && data.bubun !== undefined) {
+        bubunInput.value = data.bubun;
+      }
+      updateJibunAddress();
+
+      // 3. 건물명
+      if (buildingName && data.buildingName) {
+        buildingName.value = data.buildingName;
+      }
+
+      // 4. 호실 및 총층수
+      if (roomNumberInput && data.roomNumber) {
+        roomNumberInput.value = data.roomNumber;
+      }
+      if (totalFloorInput && data.totalFloor) {
+        totalFloorInput.value = data.totalFloor;
+      }
+      updateRoomAndFloor();
+
+      // 5. 평수 (전용 / 계약)
+      if (exclusiveArea && data.exclusiveArea) {
+        exclusiveArea.value = data.exclusiveArea;
+      }
+      if (contractArea && data.contractArea) {
+        contractArea.value = data.contractArea;
+      }
+
+      // 6. 보/월/관
+      if (depositInput && data.deposit !== undefined) {
+        depositInput.value = data.deposit;
+      }
+      if (rentInput && data.rent !== undefined) {
+        rentInput.value = data.rent;
+      }
+      if (maintenanceInput && data.maintenance !== undefined) {
+        maintenanceInput.value = data.maintenance;
+      }
+
+      // 7. 엘리베이터 (TRUE / FALSE)
+      if (data.elevator) {
+        document.querySelectorAll('input[name="elevator"]').forEach(r => {
+          r.checked = (r.value === data.elevator);
+        });
+      }
+
+      // 8. 화장실 (외부구분 / 내부구분 등)
+      if (data.toiletType) {
+        document.querySelectorAll('input[name="toilet"]').forEach(r => {
+          r.checked = (r.value === data.toiletType);
+        });
+      }
+
+      // 9. 주차 (자주 / 기계 / 혼합 및 주차대수)
+      if (data.parkingType) {
+        document.querySelectorAll('input[name="parkingType"]').forEach(r => {
+          r.checked = (r.value === data.parkingType);
+        });
+      }
+      if (parkingCarsCount && data.parkingCars !== undefined) {
+        parkingCarsCount.value = data.parkingCars;
+        const badge = document.getElementById('parkingCountBadge');
+        if (badge) badge.textContent = `${data.parkingCars}대`;
+      }
+      if (parkingNotAllowed) {
+        parkingNotAllowed.checked = false;
+      }
+
+      // 10. 룸 구조 (룸 개수)
+      if (data.roomCount && data.roomCount > 0) {
+        if (structRoom) {
+          structRoom.checked = true;
+          if (roomInputBox) roomInputBox.classList.add('active');
+        }
+        if (roomCount) {
+          roomCount.disabled = false;
+          roomCount.value = data.roomCount;
+        }
+        if (btnRoomUp) btnRoomUp.disabled = false;
+        if (btnRoomDown) btnRoomDown.disabled = false;
+      }
+
+      // 11. 인근 지하철역
+      if (subwayStationInput && data.subway) {
+        subwayStationInput.value = data.subway;
+        if (subwayChips) {
+          subwayChips.querySelectorAll('.chip-mini').forEach(chip => {
+            if (data.subway.includes(chip.dataset.subway)) {
+              chip.classList.add('active');
+            }
+          });
+        }
+      }
+
+      // 12. 부동산(중개사) 연락처는 입력란에서 제외 요청에 따라 채우지 않음 (공란 유지)
+
+      // 13. 비고 / 특이사항 메모
+      if (data.memo) {
+        const memoInput = document.getElementById('memo');
+        if (memoInput) {
+          memoInput.value = data.memo;
+        }
+      }
+
+      // 전체 자동 계산 및 프리뷰 일괄 갱신
+      updateCalculations();
     }
 
     // Jibun (본번 / 부번) Input Listeners

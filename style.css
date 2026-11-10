@@ -2253,3 +2253,219 @@ select:focus {
   40%, 80% { transform: translateX(8px); }
 }
 
+/* ==========================================================================
+   Naver Real Estate Import Card Styles
+   ========================================================================== */
+.naver-card {
+  border: 1.5px solid #03c75a;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(3, 199, 90, 0.1);
+}
+
+.naver-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(3, 199, 90, 0.2);
+  padding: 12px 16px;
+}
+
+.naver-badge-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.naver-n-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #03c75a;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+.naver-header h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.naver-config-btn {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.naver-config-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.naver-api-config-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.config-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.config-row {
+  display: flex;
+  gap: 6px;
+}
+
+.config-row input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.btn-save-mini {
+  padding: 6px 14px;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.config-desc {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.naver-fetch-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.naver-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.naver-input-wrapper input {
+  width: 100%;
+  padding: 12px 34px 12px 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: 2px solid #86efac;
+  border-radius: 10px;
+  background: #ffffff;
+  transition: all 0.2s;
+}
+
+.naver-input-wrapper input:focus {
+  outline: none;
+  border-color: #03c75a;
+  box-shadow: 0 0 0 3px rgba(3, 199, 90, 0.2);
+}
+
+.btn-clear-naver {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #e2e8f0;
+  color: #64748b;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-naver-fetch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 18px;
+  background: #03c75a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(3, 199, 90, 0.3);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-naver-fetch:hover {
+  background: #02b350;
+}
+
+.btn-naver-fetch:active {
+  transform: scale(0.97);
+}
+
+.btn-naver-fetch.loading {
+  background: #94a3b8;
+  cursor: wait;
+}
+
+.naver-status-banner {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.naver-status-banner.info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.naver-status-banner.success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.naver-status-banner.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+
