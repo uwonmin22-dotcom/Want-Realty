@@ -21,36 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 로컬 캐시 (최근 조회 매물 저장)
 ARTICLE_CACHE: Dict[str, Dict[str, Any]] = {}
-
-# 기본 저장된 테스트 매물 데이터 (2658993641 - 세바 빌딩)
-ARTICLE_CACHE["2658993641"] = {
-    "success": True,
-    "articleId": "2658993641",
-    "gu": "서초구",
-    "dong": "서초동",
-    "bonbun": "1544",
-    "bubun": "9",
-    "buildingName": "세바 빌딩",
-    "roomNumber": "",
-    "floor": "5",
-    "totalFloor": "5",
-    "roomAndFloor": "5층/5층",
-    "exclusiveArea": 28.1,
-    "contractArea": 34.2,
-    "deposit": 4000,
-    "rent": 336,
-    "maintenance": 42,
-    "elevator": "TRUE",
-    "parkingType": "자주",
-    "parkingCars": 1,
-    "toiletType": "외부구분",
-    "roomCount": 2,
-    "subway": "서초역 2번 출구 도보 4분",
-    "realtorContact": "",
-    "memo": "[특징] I 서초역 역세권 I 룸2개 I 주차1대 I 엘베 有 I 협의입주\n\n- 해당 층 / 전체 층: 5층 / 5층\n- 룸 2개, 업무 홀, 단독 테라스\n- 개별 냉,난방 (냉,난방기 완비)\n- 엘리베이터 1대\n- 외부 화장실\n- 지상 주차 1대\n- 입주가능일: 협의 입주"
-}
 
 class NaverRealEstateFetcher:
     def __init__(self):
@@ -58,9 +29,13 @@ class NaverRealEstateFetcher:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://fin.land.naver.com/",
         }
-        self.client = httpx.Client(headers=self.headers, follow_redirects=True, timeout=12.0)
-        self.cookies = {}
+        self.client = httpx.Client(
+            headers=self.headers,
+            follow_redirects=True,
+            timeout=25.0
+        )
 
     def search_jibun_address(self, query: str) -> Dict[str, str]:
         """네이버 지도 검색을 통해 지번(본번-부번) 추출"""
@@ -105,34 +80,11 @@ class NaverRealEstateFetcher:
             resp = self.client.get(url)
             html = resp.text
 
-            # 중개사 정보 API 호출
-            broker_info = {}
-            try:
-                r_agent = self.client.get(f"https://fin.land.naver.com/front-api/v1/article/agent?articleNumber={article_id}")
-                if r_agent.status_code == 200:
-                    agent_res = r_agent.json().get("result", {})
-                    if agent_res:
-                        b_name = agent_res.get("brokerageName", "")
-                        b_rep = agent_res.get("brokerName", "")
-                        phone = agent_res.get("phone", {})
-                        p_str = phone.get("mobile") or phone.get("brokerage") or ""
-                        broker_info = {
-                            "realtorContact": f"{b_name} ({b_rep}) {p_str}".strip()
-                        }
-            except Exception as e:
-                logger.warning(f"Failed to fetch agent info: {e}")
-
-            # Script 및 RSC 스트림에서 매물 데이터 파싱
-            scripts = re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL)
-            target_text = ""
-            for s in scripts:
-                if "priceInfo" in s or article_id in s:
-                    target_text = s
-                    break
-            if not target_text:
-                target_text = html
-
-            stream = target_text.replace('\\"', '"').replace('\\\\', '\\').replace('\\n', '\n')
+            # RSC 스트림 추출 (self.__next_f.push)
+            chunks = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.DOTALL)
+            stream = "".join(chunks).replace('\\"', '"').replace('\\\\', '\\').replace('\\n', '\n')
+            if not stream:
+                stream = html
 
             # priceInfo 블록 탐색
             pos = stream.find('{"priceInfo":')
@@ -172,6 +124,27 @@ class NaverRealEstateFetcher:
             deposit_man = int(raw_deposit // 10000) if raw_deposit else 0
             rent_man = int(raw_rent // 10000) if raw_rent else 0
 
+            # 만약 priceInfo가 비어있다면 meta description에서 파싱 (예: "월세 1억/700")
+            if not deposit_man and not rent_man:
+                desc_m = re.search(r'content="(?:월세|전세|매매)?\s*([0-9,]+억)?\s*([0-9,]+만)?/([0-9,]+)"', html)
+                if not desc_m:
+                    desc_m = re.search(r'content="월세\s*([0-9,]+억)?\s*([0-9,]+)?/([0-9,]+)"', html)
+                if desc_m:
+                    # 1억 -> 10000
+                    billion_str = desc_m.group(1) or ""
+                    million_str = desc_m.group(2) or ""
+                    rent_str = desc_m.group(3) or ""
+                    dep_calc = 0
+                    if "억" in billion_str:
+                        b_num = int(re.sub(r'[^0-9]', '', billion_str) or 1)
+                        dep_calc += b_num * 10000
+                    if million_str:
+                        m_num = int(re.sub(r'[^0-9]', '', million_str) or 0)
+                        dep_calc += m_num
+                    deposit_man = dep_calc
+                    if rent_str:
+                        rent_man = int(re.sub(r'[^0-9]', '', rent_str) or 0)
+
             # 본문 설명
             desc = article_detail.get("articleDescription", "")
             feature = article_detail.get("articleFeatureDescription", "")
@@ -190,9 +163,13 @@ class NaverRealEstateFetcher:
             bld_match = re.search(r'건물명\s*[:：]\s*([^\n\r]+)', desc)
             if bld_match:
                 building_name = bld_match.group(1).strip()
-            else:
+            elif raw_bld:
                 parts = [p.strip() for p in raw_bld.split("I") if p.strip()]
                 building_name = parts[0] if parts else raw_bld
+            else:
+                # meta og:title에서 추출 (예: "서초동 중소형사무실")
+                og_t = re.search(r'property="og:title" content="(.*?)"', html)
+                building_name = og_t.group(1).strip() if og_t else "중소형사무실"
 
             # 층수
             target_floor = str(floor_info.get("targetFloor", ""))
@@ -272,11 +249,23 @@ class NaverRealEstateFetcher:
                     "1168010300": "개포동"
                 }
                 dong_name = dong_map.get(legal_division, "역삼동")
+            else:
+                # 제목/본문에서 동 탐색
+                for d in ["서초동", "반포동", "잠원동", "양재동", "방배동"]:
+                    if d in html:
+                        gu_name = "서초구"
+                        dong_name = d
+                        break
+                for d in ["논현동", "역삼동", "신사동", "삼성동", "대치동", "도곡동", "개포동"]:
+                    if d in html:
+                        gu_name = "강남구"
+                        dong_name = d
+                        break
 
             # 지번 자동 검색
             bonbun = ""
             bubun = ""
-            if building_name:
+            if building_name and building_name != "중소형사무실":
                 jibun_info = self.search_jibun_address(f"{dong_name} {building_name}")
                 bonbun = jibun_info.get("bonbun", "")
                 bubun = jibun_info.get("bubun", "")
@@ -300,7 +289,7 @@ class NaverRealEstateFetcher:
                 "roomNumber": "",
                 "floor": target_floor,
                 "totalFloor": total_floor,
-                "roomAndFloor": f"{target_floor}층/{total_floor}층" if total_floor else (f"{target_floor}층" if target_floor else ""),
+                "roomAndFloor": f"{target_floor}층/{total_floor}층" if (target_floor and total_floor and total_floor != "-") else (f"{target_floor}층" if target_floor else ""),
                 "exclusiveArea": exclusive_pyeong,
                 "contractArea": contract_pyeong,
                 "deposit": deposit_man,
@@ -316,7 +305,6 @@ class NaverRealEstateFetcher:
                 "memo": full_memo
             }
 
-            # 캐시 저장
             ARTICLE_CACHE[article_id] = result
             return result
 
@@ -345,4 +333,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"Starting server on port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)
-
