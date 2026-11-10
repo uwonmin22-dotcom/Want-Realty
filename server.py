@@ -65,18 +65,11 @@ class NaverRealEstateFetcher:
         self.cookie_str = DEFAULT_COOKIE_STR
         self.x_attest = DEFAULT_ATTEST
         self.headers = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
             "cookie": self.cookie_str,
-            "origin": "https://fin.land.naver.com",
-            "referer": "https://fin.land.naver.com/map",
-            "sec-ch-ua": '"Not-A.Brand";v="99", "Google Chrome";v="157", "Chromium";v="157"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "same-origin",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+            "referer": "https://fin.land.naver.com/",
+            "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
             "x-attest": self.x_attest
         }
         self.client = httpx.Client(
@@ -112,7 +105,7 @@ class NaverRealEstateFetcher:
         return {}
 
     def search_building_and_jibun(self, dong: str, bonbun: str, bubun: str = "") -> Dict[str, str]:
-        """지번(동, 본번-부번)으로 네이버 지도/건축물대장 공공DB 검색하여 정확한 건물명 추출"""
+        """지번(동, 본번-부번)으로 네이버 지도/건축물대장 공공DB 검색하여 정확한 공식 건물명만 추출 (상호명 배제, 없으면 공란)"""
         if not bonbun:
             return {}
         query = f"{dong} {bonbun}" + (f"-{bubun}" if bubun else "")
@@ -128,24 +121,35 @@ class NaverRealEstateFetcher:
                 addr_list = data.get("result", {}).get("address", {}).get("jibunsAddress", {}).get("list", [])
                 if addr_list:
                     item = addr_list[0]
-                    build_name = item.get("addressElements", {}).get("buildName") or item.get("buildName", "")
-                    site_rep = item.get("siteRepName", "")
+                    build_name = (item.get("addressElements", {}).get("buildName") or item.get("buildName", "") or "").strip()
+                    site_rep = (item.get("siteRepName", "") or "").strip()
                     mapped_info = item.get("mappedAddress", {}) or {}
-                    mapped_name = mapped_info.get("name", "")
+                    mapped_name = (mapped_info.get("name", "") or "").strip()
 
                     resolved_building = ""
-                    # 1순위: 공공 건축물대장상 공식 건물명 (buildName)
-                    if build_name and build_name not in ["사무실", "중소형사무실", "일반상가", "상가", "단독주택"]:
-                        resolved_building = build_name
-                    # 2순위: 대표 건물명(siteRepName) 중 상호명/병원 제외한 빌딩명
-                    elif site_rep and not any(x in site_rep for x in ["의원", "치과", "약국", "헤어", "스타벅스", "공인중개사", "카페"]):
-                        resolved_building = site_rep
-                    # 3순위: 맵핑 주소 내 건물명
-                    elif mapped_name:
-                        m_bld = re.search(r'\((?:[가-힣]+동\s*[\d-]+)?([^\)]+)\)', mapped_name)
-                        if m_bld:
-                            resolved_building = m_bld.group(1).strip()
+                    generic_bld_types = ["사무실", "중소형사무실", "일반상가", "상가", "단독주택", "다세대주택", "근린생활시설"]
+                    store_words = ['점', '점포', '식당', '토스트', '치킨', '카페', '커피', '약국', '의원', '치과', '마트', '헤어', '미용실', '공인중개사']
+                    bld_suffixes = ('빌딩', '타워', '빌라', '하우스', '팰리스', '프라자', '플라자', '센터', '스퀘어', '파크')
 
+                    # 1순위: 건축물대장 공식 건물명 (buildName)
+                    if build_name and build_name not in generic_bld_types:
+                        resolved_building = build_name
+                    # 2순위: 대표명칭(siteRepName) - 반드시 빌딩/타워 등 건물 고유 접미사로 끝나고 상호명 키워드가 없어야 함
+                    elif site_rep and site_rep.endswith(bld_suffixes) and not any(sw in site_rep for sw in store_words):
+                        resolved_building = site_rep
+                    # 3순위: 맵핑 주소 내 괄호 안 건물명 (단, 지번주소가 아니고 순수 건물명인 경우만)
+                    elif mapped_name:
+                        m_bld = re.search(r'\((?:[가-힣]+[동리로길]\s*[\d-]*,?\s*)?([^\)]+)\)', mapped_name)
+                        if m_bld:
+                            cand = m_bld.group(1).strip()
+                            if re.search(r'[가-힣]{2,}', cand) and not re.search(r'^\d', cand) and cand not in generic_bld_types and not any(x in cand for x in store_words):
+                                if cand.endswith(bld_suffixes):
+                                    resolved_building = cand
+
+                    if not re.search(r'[가-힣]{2,}', resolved_building) or re.match(r'^\d+$', resolved_building):
+                        resolved_building = ""
+
+                    # 공식 건물명이 없으면 사용자의 요구대로 반드시 공란("") 유지
                     return {
                         "buildingName": resolved_building,
                         "fullAddress": item.get("fullAddress", ""),
@@ -268,7 +272,7 @@ class NaverRealEstateFetcher:
         desc = article_detail.get("articleDescription", "")
         feature = article_detail.get("articleFeatureDescription", "")
 
-        # ★ 관리비: 누락 없이 전체 소스에서 추출
+        # ★ 관리비: 모바일 상세 HTML 및 priceInfo/설명 등 전체 소스에서 정확히 추출
         maintenance_man = 0
         raw_fee = price_info.get("managementFeeAmount") or price_info.get("monthlyManagementCost") or price_info.get("managementCost")
         if raw_fee:
@@ -277,6 +281,15 @@ class NaverRealEstateFetcher:
                 maintenance_man = (fee_val // 10000) if fee_val >= 10000 else fee_val
             except:
                 pass
+
+        if not maintenance_man:
+            # 네이버 모바일 상세 페이지의 관리비 표 파싱 (예: >관리비</div>... >20만원</div>)
+            m_html = re.search(r'>\s*관리비\s*</div>[\s\S]{1,250}?>\s*([0-9,]+)\s*만원', html)
+            if m_html:
+                try:
+                    maintenance_man = int(re.sub(r'[^0-9]', '', m_html.group(1)))
+                except:
+                    pass
 
         if not maintenance_man:
             fee_patterns = [
@@ -298,16 +311,12 @@ class NaverRealEstateFetcher:
                     except:
                         pass
 
-        # 건물명 결정: "중소형사무실", "사무실" 등 generic 명칭 원천 배제
+        # ★ 건물명: 건축물대장 DB 또는 공식 건물명 없으면 반드시 공란("") 유지 (절대 상호명이나 지번으로 임의 생성 안함)
         final_building = resolved_building
-        if not final_building or final_building in ["사무실", "중소형사무실", "일반상가", "상가"]:
-            raw_bld = article_detail.get("nonComplexBuildingName") or article_detail.get("articleName", "")
-            if raw_bld and raw_bld not in ["사무실", "중소형사무실", "일반상가", "상가"]:
-                final_building = raw_bld
-            else:
-                final_building = f"{dong_name} {bonbun}" + (f"-{bubun}" if bubun else "") + "번지"
+        if final_building in ["사무실", "중소형사무실", "일반상가", "상가", "단독주택"]:
+            final_building = ""
 
-        # 층수
+        # 층수 및 호실 자동 연계
         target_floor = str(floor_info.get("targetFloor", ""))
         total_floor = str(floor_info.get("totalFloor", ""))
         if not total_floor or total_floor == "-":
@@ -315,6 +324,17 @@ class NaverRealEstateFetcher:
             if fl_match:
                 target_floor = fl_match.group(1)
                 total_floor = fl_match.group(2)
+
+        # ★ 호실: 사용자가 직접 수정하기 편하도록 노출 중인 층수(예: '3층', '지하1층')를 자동 채움
+        room_text = ""
+        if target_floor and target_floor != "-":
+            tf_str = str(target_floor).strip()
+            if tf_str.startswith("-") or tf_str.upper().startswith("B") or "지하" in tf_str:
+                num = re.sub(r'[^0-9]', '', tf_str) or "1"
+                room_text = f"지하{num}층"
+            else:
+                num = re.sub(r'[^0-9]', '', tf_str)
+                room_text = f"{num}층" if num else f"{tf_str}층"
 
         # 면적
         exclusive_m2 = size_info.get("exclusiveSpace", 0)
@@ -362,6 +382,17 @@ class NaverRealEstateFetcher:
         # ★ 비고/비공개 메모는 사용자 요청에 따라 공란 유지 ("")
         memo_text = ""
 
+        # 층수/총층 문자열 구성
+        total_fl_text = f"{total_floor}층" if (total_floor and total_floor != "-") else ""
+        if room_text and total_fl_text:
+            rf_display = f"{room_text}/{total_fl_text}"
+        elif room_text:
+            rf_display = room_text
+        elif total_fl_text:
+            rf_display = total_fl_text
+        else:
+            rf_display = ""
+
         result = {
             "success": True,
             "articleId": article_id,
@@ -370,10 +401,10 @@ class NaverRealEstateFetcher:
             "bonbun": bonbun,
             "bubun": bubun,
             "buildingName": final_building,
-            "roomNumber": "",
+            "roomNumber": room_text,
             "floor": target_floor,
             "totalFloor": total_floor,
-            "roomAndFloor": f"{target_floor}층/{total_floor}층" if (target_floor and total_floor and total_floor != "-") else (f"{target_floor}층" if target_floor else ""),
+            "roomAndFloor": rf_display,
             "exclusiveArea": exclusive_pyeong,
             "contractArea": contract_pyeong,
             "deposit": deposit_man,

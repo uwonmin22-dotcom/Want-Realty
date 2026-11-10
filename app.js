@@ -1157,17 +1157,17 @@ function doPost(e) {
       }
       updateJibunAddress();
 
-      // 3. 건물명
-      if (buildingName && data.buildingName) {
-        buildingName.value = data.buildingName;
+      // 3. 건물명 (데이터 없거나 공식 건물명 미확인 시 공란)
+      if (buildingName) {
+        buildingName.value = data.buildingName || '';
       }
 
-      // 4. 호실 및 총층수
-      if (roomNumberInput && data.roomNumber) {
-        roomNumberInput.value = data.roomNumber;
+      // 4. 호실 및 총층수 (호실은 사용자가 수정하기 편하도록 노출 층수 기본 세팅)
+      if (roomNumberInput) {
+        roomNumberInput.value = data.roomNumber || (data.floor ? (String(data.floor).includes('층') ? data.floor : `${data.floor}층`) : '');
       }
-      if (totalFloorInput && data.totalFloor) {
-        totalFloorInput.value = data.totalFloor;
+      if (totalFloorInput) {
+        totalFloorInput.value = data.totalFloor ? (String(data.totalFloor).includes('층') ? data.totalFloor : `${data.totalFloor}층`) : '';
       }
       updateRoomAndFloor();
 
