@@ -362,29 +362,14 @@ fetcher = NaverRealEstateFetcher()
 @app.get("/api")
 @app.get("/api/index")
 @app.get("/api/index.py")
-def read_root():
-    return {"message": "Naver Real Estate Proxy API is running", "status": "online"}
-
-@app.get("/health")
-@app.get("/api/health")
-def health_check():
-    return {"status": "ok"}
-
 @app.get("/api/naver-article")
 @app.get("/naver-article")
-@app.get("/api/index/naver-article")
-def get_naver_article(articleId: str = Query(..., description="네이버 부동산 10자리 매물번호")):
-    articleId = articleId.strip()
-    if not articleId:
-        raise HTTPException(status_code=400, detail="매물번호를 입력해주세요.")
-    return fetcher.fetch_from_naver(articleId)
-
 @app.get("/{full_path:path}")
-def catch_all(request: Request, full_path: str = ""):
-    article_id = request.query_params.get("articleId")
-    if article_id:
-        return fetcher.fetch_from_naver(article_id.strip())
-    if "health" in full_path:
+def handle_all_requests(request: Request, full_path: str = "", articleId: Optional[str] = None):
+    target_id = articleId or request.query_params.get("articleId")
+    if target_id:
+        return fetcher.fetch_from_naver(target_id.strip())
+    if "health" in full_path or request.url.path.endswith("health"):
         return {"status": "ok"}
     return {"message": "Naver Real Estate Proxy API is running", "path": full_path, "status": "online"}
 
