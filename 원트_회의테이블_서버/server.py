@@ -517,17 +517,34 @@ import shutil
 import time
 
 def start_tunnel_thread():
-    time.sleep(1.5)
-    cloudflared_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudflared.exe")
-    if not os.path.exists(cloudflared_path):
-        cloudflared_path = shutil.which("cloudflared") or "cloudflared.exe"
-    
-    if os.path.exists(cloudflared_path) or shutil.which("cloudflared"):
-        logger.info(f"Starting Cloudflare tunnel using {cloudflared_path} on port 8888...")
+    time.sleep(1.0)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ngrok_path = os.path.join(base_dir, "ngrok.exe")
+    cloudflared_path = os.path.join(base_dir, "cloudflared.exe")
+
+    # 1. ngrok 평생 고정 도메인 자동 실행
+    if os.path.exists(ngrok_path) or shutil.which("ngrok"):
+        exe_ngrok = ngrok_path if os.path.exists(ngrok_path) else (shutil.which("ngrok") or "ngrok.exe")
         try:
-            subprocess.Popen([cloudflared_path, "tunnel", "--url", "http://127.0.0.1:8888"])
+            logger.info("Configuring ngrok authtoken...")
+            subprocess.run([exe_ngrok, "config", "add-authtoken", "3LxFlB6TjJZ1sKAm98jSraskDrr_23s83qpNTwEr92cgiaQtb"], capture_output=True)
+            logger.info("Starting permanent ngrok tunnel on manifesto-cost-gambling.ngrok-free.dev...")
+            subprocess.Popen([exe_ngrok, "http", "8888", "--url=manifesto-cost-gambling.ngrok-free.dev"])
+            print("\n" + "="*65)
+            print("★ [원트부동산 평생 고정 서버 정상 가동 완료!]")
+            print("★ 평생 고정 주소: https://manifesto-cost-gambling.ngrok-free.dev")
+            print("★ (이제 컴퓨터를 1,000번 껐다 켜도 주소가 영원히 바뀌지 않습니다!)")
+            print("="*65 + "\n", flush=True)
         except Exception as e:
-            logger.error(f"Error starting cloudflared tunnel: {e}")
+            logger.error(f"Error starting ngrok tunnel: {e}")
+
+    # 2. cloudflared 보조 터널 (백업용)
+    if os.path.exists(cloudflared_path) or shutil.which("cloudflared"):
+        exe_cf = cloudflared_path if os.path.exists(cloudflared_path) else "cloudflared.exe"
+        try:
+            subprocess.Popen([exe_cf, "tunnel", "--url", "http://127.0.0.1:8888"])
+        except Exception as e:
+            pass
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8888))

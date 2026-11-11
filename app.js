@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Naver Real Estate Auto Import Elements & Config
   const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
-  const DEFAULT_NAVER_API_URL = 'https://paid-graphs-codes-somebody.trycloudflare.com';
+  const DEFAULT_NAVER_API_URL = 'https://manifesto-cost-gambling.ngrok-free.dev';
   let savedNaverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL);
   if (!savedNaverApiUrl || savedNaverApiUrl !== DEFAULT_NAVER_API_URL) {
     savedNaverApiUrl = DEFAULT_NAVER_API_URL;
@@ -1100,7 +1100,8 @@ function doPost(e) {
         const resp = await fetch(apiUrl, {
           mode: 'cors',
           headers: {
-            'Bypass-Tunnel-Reminder': 'true'
+            'Bypass-Tunnel-Reminder': 'true',
+            'ngrok-skip-browser-warning': 'true'
           }
         });
         if (!resp.ok) {
