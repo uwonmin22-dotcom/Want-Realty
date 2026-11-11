@@ -80,9 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Naver Real Estate Auto Import Elements & Config
   const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
-  const DEFAULT_NAVER_API_URL = 'https://poems-trademark-everywhere-specifically.trycloudflare.com';
+  const DEFAULT_NAVER_API_URL = 'https://hint-westminster-chrome-different.trycloudflare.com';
   let savedNaverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL);
-  if (!savedNaverApiUrl || savedNaverApiUrl.includes('localhost') || savedNaverApiUrl.includes('onrender.com') || savedNaverApiUrl.includes('vercel.app') || savedNaverApiUrl.includes('loca.lt')) {
+  if (!savedNaverApiUrl || savedNaverApiUrl !== DEFAULT_NAVER_API_URL) {
     savedNaverApiUrl = DEFAULT_NAVER_API_URL;
     localStorage.setItem(STORAGE_KEY_NAVER_API_URL, DEFAULT_NAVER_API_URL);
   }
