@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Naver Real Estate Auto Import Elements & Config
   const STORAGE_KEY_NAVER_API_URL = 'smart_listing_naver_api_url';
-  const DEFAULT_NAVER_API_URL = 'https://hint-westminster-chrome-different.trycloudflare.com';
+  const DEFAULT_NAVER_API_URL = 'https://paid-graphs-codes-somebody.trycloudflare.com';
   let savedNaverApiUrl = localStorage.getItem(STORAGE_KEY_NAVER_API_URL);
   if (!savedNaverApiUrl || savedNaverApiUrl !== DEFAULT_NAVER_API_URL) {
     savedNaverApiUrl = DEFAULT_NAVER_API_URL;
